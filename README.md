@@ -15,7 +15,6 @@ It can do these so far (I know, very impressive):
 - ~~Sequence Memory~~
 
 ## How Do I Use This?
-
 1. Install Python (3.12+ recommended)
 2. Install the requirements (that doesnt exist yet):
 ```bash
@@ -25,6 +24,9 @@ pip install -r requirements.txt
 ```bash
 python "path/to/the/script/code.py"
 ```
+<sub>
+i will add executable files later, for now im just working on making the "AI"
+</sub>
 
 ## Requirements
 - Python 3.12+
