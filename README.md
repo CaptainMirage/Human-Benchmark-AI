@@ -5,8 +5,8 @@ Want to dominate FPS games with godlike reflexes?
 
 Well, this is the wrong place and year to be in (the year being 2025), This is a collection of Python scripts that beats the sh*t out of [Human Benchmark](https://humanbenchmark.com/).
 
-## What the Hell Can This Thing Do?
-It can do these so far (I know, very impressive):
+## What Can This Thing Do?
+It can beat the sh*t out of these so far (I know, very impressive):
 - Reaction Time
 - ~~Aim Trainer~~
 - ~~Number Memory~~
