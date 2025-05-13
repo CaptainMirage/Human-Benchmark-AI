@@ -1,4 +1,6 @@
-# <center> Human-Benchmark-AI </center> <center> <small>project inspired by code bullet</small> </center>  
+<center> <small>project inspired by code bullet</small> </center>
+
+# <center> Human-Benchmark-AI </center> 
 
 
 Ever dreamed of having superhuman reaction times?
