@@ -1,6 +1,6 @@
 <h1 align="center">Human-Benchmark-AI</h1>
 
-<p align="center"><small>project inspired by code bullet</small></p>
+><p align="center"><small>project inspired by code bullet</small></p>
 
 Ever dreamed of having superhuman reaction times?
 
