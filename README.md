@@ -1,4 +1,5 @@
-# Human-Benchmark-AI
+# Human-Benchmark-AI <p style="font-size:0.4em;">project inspired by code bullet</p>
+
 Ever dreamed of having superhuman reaction times?
 
 Want to dominate FPS games with godlike reflexes?
