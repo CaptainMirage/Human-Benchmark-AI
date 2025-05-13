@@ -1,6 +1,5 @@
-<p align="center"><small>project inspired by code bullet</small></p>
 <h1 align="center">Human-Benchmark-AI</h1>
-
+<p align="center"><small>project inspired by code bullet</small></p>
 Ever dreamed of having superhuman reaction times?
 
 Want to dominate FPS games with godlike reflexes?
