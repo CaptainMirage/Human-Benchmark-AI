@@ -22,8 +22,9 @@ def react_to_color_changes(x, y):
 
         while True:
             if first_test:
-                print("Press any key to start monitoring...")
-                input()
+                print("left click to start monitoring...")
+                # waits for the user to left click
+                win32api.GetAsyncKeyState(win32con.VK_LBUTTON)
                 first_test = False
             
             # Get initial screenshot without timing impact
