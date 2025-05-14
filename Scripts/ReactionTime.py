@@ -38,14 +38,3 @@ def react_to_color_changes(x, y):
                     click_fn(x, y)
                     print("Second click done, restarting test...")
                     break
-
-if __name__ == '__main__':
-    print("Position your mouse over the reaction test area in 3 seconds")
-    time.sleep(3)
-    pos = pyautogui.position()
-    print(f"Monitoring position: {pos.x}, {pos.y}")
-    
-    try:
-        react_to_color_changes(pos.x, pos.y)
-    except KeyboardInterrupt:
-        print("\nMonitoring stopped by user")
