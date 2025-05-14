@@ -1,6 +1,5 @@
 from time import sleep, perf_counter_ns
 import mss
-import numpy as np
 import win32api, win32con  # Much faster than pyautogui for clicking
 
 def click(x, y):
