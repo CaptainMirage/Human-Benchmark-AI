@@ -22,10 +22,17 @@ def react_to_color_changes(x, y):
 
         while True:
             if first_test:
+                # Wait for any prior left mouse clicks to be released.
+                while win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
+                    time.sleep(0.01)
+                
                 print("left click to start monitoring...")
-                # waits for the user to left click
-                win32api.GetAsyncKeyState(win32con.VK_LBUTTON)
+                # waits for the user to left click to continue
+                while True:
+                    if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
+                        break
                 first_test = False
+                time.sleep(0.2)  # Small delay to avoid immediate re-triggering
             
             # Get initial screenshot without timing impact
             sct_img = sct.grab(region)
@@ -47,6 +54,7 @@ def react_to_color_changes(x, y):
                     time.sleep(0.5)
                     click(x, y)
                     print("Second click done, restarting test...")
+                    time.sleep(0.2)  # Small delay to avoid immediate re-triggering
                     break
     
 if __name__ == '__main__':
