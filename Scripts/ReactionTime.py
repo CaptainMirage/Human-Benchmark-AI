@@ -1,4 +1,4 @@
-import time
+from time import sleep, perf_counter_ns
 import mss
 import numpy as np
 import win32api, win32con  # Much faster than pyautogui for clicking
@@ -24,7 +24,7 @@ def react_to_color_changes(x, y):
             if first_test:
                 # Wait for any prior left mouse clicks to be released.
                 while win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
-                    time.sleep(0.01)
+                    sleep(0.01)
                 
                 print("left click to start monitoring...")
                 # waits for the user to left click to continue
@@ -32,7 +32,7 @@ def react_to_color_changes(x, y):
                     if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
                         break
                 first_test = False
-                time.sleep(0.2)  # Small delay to avoid immediate re-triggering
+                sleep(0.2)  # Small delay to avoid immediate re-triggering
             
             # Get initial screenshot without timing impact
             sct_img = sct.grab(region)
@@ -41,20 +41,20 @@ def react_to_color_changes(x, y):
             
             # Use busy loop for minimal latency
             while True:
-                start_time = time.perf_counter_ns()
+                start_time = perf_counter_ns()
                 sct_img = sct.grab(region)
                 current_color = sct_img.pixel(0, 0)
                 
                 if current_color != initial_color:
-                    rt = (time.perf_counter_ns() - start_time) / 1000000  # ms
+                    rt = (perf_counter_ns() - start_time) / 1000000  # ms
                     click(x, y)
                     times.append(rt)
                     print(f"Color changed! RT: {rt:.3f}ms")
                     
-                    time.sleep(0.5)
+                    sleep(0.5)
                     click(x, y)
                     print("Second click done, restarting test...")
-                    time.sleep(0.2)  # Small delay to avoid immediate re-triggering
+                    sleep(0.2)  # Small delay to avoid immediate re-triggering
                     break
     
 if __name__ == '__main__':
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)  # Alt key up
 
     print("Position your mouse over the reaction test area in 3 seconds")
-    time.sleep(3)
+    sleep(3)
     pos = win32api.GetCursorPos()
     print(f"Position captured: {pos}")
     
