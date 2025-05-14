@@ -1,40 +1,69 @@
-import pyautogui
 import time
 import mss
-import mouse  # pip install mouse
+import numpy as np
+import win32api, win32con  # Much faster than pyautogui for clicking
+
+def click(x, y):
+    # Direct Windows API call is much faster than pyautogui
+    win32api.SetCursorPos((x, y))
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
 
 def react_to_color_changes(x, y):
     with mss.mss() as sct:
+        # Minimize region size for faster capture
         region = {'top': y, 'left': x, 'width': 1, 'height': 1}
         print(f"Monitoring position set to ({x}, {y}).")
         times = []
-        click_fn = pyautogui.click  # Cache for speed
-        grab = sct.grab             # Cache the grab method
         
+        # Pre-allocate variables outside loops
+        start_time = 0
         first_test = True
-        # Main loop: first cycle waits for a click; later cycles start automatically
+
         while True:
             if first_test:
-                print("Click once to start checking for color change...")
-                mouse.wait(button='left')
+                print("Press any key to start monitoring...")
+                input()
                 first_test = False
-            else:
-                time.sleep(0.2)  # Automatic delay for subsequent cycles
-
-            initial_color = grab(region).pixel(0, 0)
+            
+            # Get initial screenshot without timing impact
+            sct_img = sct.grab(region)
+            initial_color = sct_img.pixel(0, 0)
             print(f"Initial color: {initial_color}. Monitoring for change...")
             
-            # Inner loop: busy-wait checking for color change with minimal overhead
+            # Use busy loop for minimal latency
             while True:
-                start = time.perf_counter()
-                current_color = grab(region).pixel(0, 0)
+                start_time = time.perf_counter_ns()
+                sct_img = sct.grab(region)
+                current_color = sct_img.pixel(0, 0)
+                
                 if current_color != initial_color:
-                    rt = (time.perf_counter() - start) * 1000  # Reaction time in ms
-                    click_fn(x, y)
+                    rt = (time.perf_counter_ns() - start_time) / 1000000  # ms
+                    click(x, y)
                     times.append(rt)
-                    print(f"Color changed! RT: {rt:.2f}ms")
+                    print(f"Color changed! RT: {rt:.3f}ms")
                     
-                    time.sleep(1)  # Wait a second after first click
-                    click_fn(x, y)
+                    time.sleep(0.5)
+                    click(x, y)
                     print("Second click done, restarting test...")
                     break
+    
+if __name__ == '__main__':
+    # # switches the window to the next window with alt + tab
+    alttab: bool = False
+    if alttab:
+        win32api.keybd_event(0x12, 0, 0, 0)  # Alt key down
+        win32api.keybd_event(0x09, 0, 0, 0)  # Tab key down
+        win32api.keybd_event(0x09, 0, win32con.KEYEVENTF_KEYUP, 0)  # Tab key up
+        win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)  # Alt key up
+
+    print("Position your mouse over the reaction test area in 3 seconds")
+    time.sleep(3)
+    pos = win32api.GetCursorPos()
+    print(f"Position captured: {pos}")
+    
+    try:
+        # calls react_to_color_changes that inputs the pos which is a tuple[int, int]
+        react_to_color_changes(pos[0], pos[1])
+    except KeyboardInterrupt:
+        print("\nMonitoring stopped by user")
