@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import mss
 import numpy as np
 import win32api, win32con
