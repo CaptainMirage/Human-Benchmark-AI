@@ -11,7 +11,7 @@ Well, this is the wrong place and year to be in (the year being 2025), This is a
 ## What Can This Thing Do?
 It can beat the sh*t out of these so far (I know, very impressive):
 - Reaction Time
-- ~~Sequence Memory~~
+- Sequence Memory
 - ~~Aim Trainer~~
 - ~~Number Memory~~
 - ~~Verbal Memory~~
