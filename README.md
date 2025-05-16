@@ -11,11 +11,13 @@ Well, this is the wrong place and year to be in (the year being 2025), This is a
 ## What Can This Thing Do?
 It can beat the sh*t out of these so far (I know, very impressive):
 - Reaction Time
+- ~~Sequence Memory~~
 - ~~Aim Trainer~~
 - ~~Number Memory~~
+- ~~Verbal Memory~~
+- ~~Chimp Test~~
 - ~~Visual Memory~~
 - ~~Typing~~
-- ~~Sequence Memory~~
 
 ## How Do I Use This?
 1. Install Python (3.12+ recommended)
