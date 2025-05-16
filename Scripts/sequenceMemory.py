@@ -3,12 +3,17 @@ import numpy as np
 import win32api, win32con
 import time
 import sys
+from collections import deque
 
 class PixelChecker:
     def __init__(self, num_coords=9):
         self.num_coords = num_coords
         self.coords = []
         self.sct = mss.mss()
+        # Queue to store coordinates that have turned white
+        self.white_sequence = deque()
+        # Last time a white pixel was detected
+        self.last_white_detection = 0
         
     def collect_coordinates(self):
         """Collect coordinates using mouse clicks with win32api"""
@@ -67,9 +72,47 @@ class PixelChecker:
             print("No white coordinates detected")
         return any_white
     
-    def monitor_coordinates(self, interval=0.1):
-        """Continuously monitor the coordinates for changes to white"""
-        print("Monitoring coordinates. Press Ctrl+C to exit.")
+    def click_at(self, x, y):
+        """Simulate mouse click at specific coordinates"""
+        # Store the current mouse position
+        old_x, old_y = win32api.GetCursorPos()
+        
+        # Move mouse to the target position
+        win32api.SetCursorPos((x, y))
+        
+        # Perform the click
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+        time.sleep(0.05)  # Short delay
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        
+        # Optional: move mouse back to original position
+        win32api.SetCursorPos((old_x, old_y))
+        
+        print(f"Clicked at ({x}, {y})")
+    
+    def execute_white_sequence(self):
+        """Click all coordinates in the white sequence in order"""
+        print(f"Executing sequence of {len(self.white_sequence)} clicks...")
+        
+        # Make a copy of the queue to preserve original sequence
+        sequence_copy = list(self.white_sequence)
+        
+        # Click each coordinate in order
+        for i, coord_index in enumerate(sequence_copy):
+            x, y = self.coords[coord_index]
+            print(f"Clicking sequence step {i+1}: Coord {coord_index+1} at ({x}, {y})")
+            self.click_at(x, y)
+            time.sleep(0.2)  # Short delay between clicks
+        
+        # Clear the sequence after execution
+        self.white_sequence.clear()
+        print("Sequence executed and cleared")
+    
+    def monitor_coordinates(self, interval=0.1, timeout=3.0):
+        """Continuously monitor the coordinates for changes to white
+        and click them in order if timeout is reached without new white pixels"""
+        print(f"Monitoring coordinates. Will click sequence if no new white pixels for {timeout} seconds.")
+        print("Press Ctrl+C to exit.")
         
         # Keep track of previous state for each coordinate
         # False = not white, True = white
@@ -77,15 +120,26 @@ class PixelChecker:
         
         try:
             while True:
+                any_new_white = False
+                
                 for i, (x, y) in enumerate(self.coords):
                     is_white_now = self.is_pixel_white(x, y)
                     
-                    # If it wasn't white before but is white now, notify
+                    # If it wasn't white before but is white now, notify and add to sequence
                     if not previous_states[i] and is_white_now:
                         print(f"Coord {i+1} is now white")
+                        self.white_sequence.append(i)
+                        self.last_white_detection = time.time()
+                        any_new_white = True
                     
                     # Update the previous state
                     previous_states[i] = is_white_now
+                
+                # Check if we should execute the sequence
+                if (not any_new_white and 
+                    len(self.white_sequence) > 0 and 
+                    time.time() - self.last_white_detection > timeout):
+                    self.execute_white_sequence()
                 
                 time.sleep(interval)
         except KeyboardInterrupt:
@@ -103,9 +157,11 @@ def main():
     checker.check_all_coordinates()
     
     # Ask if user wants to monitor continuously
-    monitor = input("\nDo you want to continue monitoring all the coordinates? (y/n): ").lower()
-    if monitor == 'y':
-        checker.monitor_coordinates()
+    print("\nStarting monitoring mode with automatic sequence execution.")
+    print("When pixels turn white, they'll be recorded in sequence.")
+    print("If no new white pixels are detected for 3 seconds, the recorded sequence will be clicked in order.")
+    
+    checker.monitor_coordinates(interval=0.1, timeout=3.0)
     
 if __name__ == "__main__":
     main()
