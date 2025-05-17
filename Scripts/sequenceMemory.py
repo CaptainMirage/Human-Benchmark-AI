@@ -16,28 +16,29 @@ class PixelChecker:
         self.last_white_detection = 0
         
     def collect_coordinates(self):
-        """Collect coordinates using mouse clicks with win32api"""
-        print(f"Please click on {self.num_coords} different locations to register coordinates...")
-        print("Press left mouse button to register a coordinate.")
+        """Collect coordinates using mouse hover and keyboard trigger (Space) with win32api
+        This method doesn't perform actual clicks to avoid triggering actions"""
+        print(f"Please hover your mouse over {self.num_coords} different locations and press SPACE to register each coordinate.")
+        print("NO clicks will be performed during registration.")
         
-        # Track state of left mouse button
-        prev_state = 0
+        # Track state of space bar
+        prev_space_state = 0
         
         while len(self.coords) < self.num_coords:
-            # Check if left mouse button is pressed
-            curr_state = win32api.GetKeyState(0x01)  # 0x01 is the virtual key code for left mouse button
+            # Check if space bar is pressed
+            curr_space_state = win32api.GetKeyState(0x20)  # 0x20 is the virtual key code for space bar
             
             # Detect press (transition from not pressed to pressed)
-            if curr_state < 0 and prev_state >= 0:
-                # Get current mouse position
+            if curr_space_state < 0 and prev_space_state >= 0:
+                # Get current mouse position without clicking
                 x, y = win32api.GetCursorPos()
                 self.coords.append((x, y))
                 print(f"Coordinate {len(self.coords)} registered: ({x}, {y})")
                 
-                # Add a small delay to avoid multiple detections for the same click
+                # Add a small delay to avoid multiple detections
                 time.sleep(0.2)
             
-            prev_state = curr_state
+            prev_space_state = curr_space_state
             time.sleep(0.01)  # Small sleep to reduce CPU usage
             
         print("All coordinates registered!")
@@ -102,7 +103,7 @@ class PixelChecker:
             x, y = self.coords[coord_index]
             print(f"Clicking sequence step {i+1}: Coord {coord_index+1} at ({x}, {y})")
             self.click_at(x, y)
-            time.sleep(0.2)  # Short delay between clicks
+            # time.sleep(0.2)  # Short delay between clicks
         
         # Clear the sequence after execution
         self.white_sequence.clear()
@@ -149,6 +150,21 @@ def main():
     # Create pixel checker instance
     checker = PixelChecker()
     
+    # Show instructions
+    print("===== Sequence Memory Clicker =====")
+    print("This tool will remember which coordinates turn white and then click them in order.")
+    print("INSTRUCTIONS:")
+    print("1. First, you'll register 9 coordinates to monitor")
+    print("2. HOVER your mouse over each point and press SPACE (this won't perform any clicks)")
+    print("3. The program will monitor these spots for white pixels")
+    print("4. When spots turn white, they'll be recorded in sequence")
+    print("5. If no new white pixels appear for 3 seconds, it will automatically click") 
+    print("   all recorded white spots in the order they appeared")
+    print("6. Press Ctrl+C at any time to exit")
+    print("====================================")
+    
+    input("Press Enter to begin coordinate registration...")
+    
     # Collect coordinates
     checker.collect_coordinates()
     
@@ -156,7 +172,7 @@ def main():
     print("\nChecking coordinates:")
     checker.check_all_coordinates()
     
-    # Ask if user wants to monitor continuously
+    # Start monitoring mode
     print("\nStarting monitoring mode with automatic sequence execution.")
     print("When pixels turn white, they'll be recorded in sequence.")
     print("If no new white pixels are detected for 3 seconds, the recorded sequence will be clicked in order.")
