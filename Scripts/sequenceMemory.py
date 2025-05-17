@@ -16,20 +16,20 @@ class PixelChecker:
         self.last_white_detection = 0
         
     def collect_coordinates(self):
-        """Collect coordinates using mouse hover and keyboard trigger (Space) with win32api
-        This method doesn't perform actual clicks to avoid triggering actions"""
-        print(f"Please hover your mouse over {self.num_coords} different locations and press SPACE to register each coordinate.")
+        """Collect coordinates using mouse position and 'C' key press
+        This avoids any mouse clicks during registration"""
+        print(f"Please position your mouse over {self.num_coords} different locations and press 'C' key to register each coordinate.")
         print("NO clicks will be performed during registration.")
         
-        # Track state of space bar
-        prev_space_state = 0
+        # Track state of 'C' key (virtual key code 0x43)
+        prev_key_state = 0
         
         while len(self.coords) < self.num_coords:
-            # Check if space bar is pressed
-            curr_space_state = win32api.GetKeyState(0x20)  # 0x20 is the virtual key code for space bar
+            # Check if 'C' key is pressed
+            curr_key_state = win32api.GetKeyState(0x43)  # 0x43 is the virtual key code for 'C' key
             
             # Detect press (transition from not pressed to pressed)
-            if curr_space_state < 0 and prev_space_state >= 0:
+            if curr_key_state < 0 and prev_key_state >= 0:
                 # Get current mouse position without clicking
                 x, y = win32api.GetCursorPos()
                 self.coords.append((x, y))
@@ -38,7 +38,7 @@ class PixelChecker:
                 # Add a small delay to avoid multiple detections
                 time.sleep(0.2)
             
-            prev_space_state = curr_space_state
+            prev_key_state = curr_key_state
             time.sleep(0.01)  # Small sleep to reduce CPU usage
             
         print("All coordinates registered!")
@@ -155,7 +155,7 @@ def main():
     print("This tool will remember which coordinates turn white and then click them in order.")
     print("INSTRUCTIONS:")
     print("1. First, you'll register 9 coordinates to monitor")
-    print("2. HOVER your mouse over each point and press SPACE (this won't perform any clicks)")
+    print("2. Position your mouse over each point and press 'C' key (no clicks needed)")
     print("3. The program will monitor these spots for white pixels")
     print("4. When spots turn white, they'll be recorded in sequence")
     print("5. If no new white pixels appear for 3 seconds, it will automatically click") 
