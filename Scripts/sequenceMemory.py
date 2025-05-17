@@ -11,21 +11,18 @@ class PixelChecker:
         self.sct = mss.mss()
         # Queue to store coordinates that have turned white
         self.white_sequence = deque()
-        # Last time a white pixel was detected
         self.last_white_detection = 0
         
     def collect_coordinates(self):
         """Collect coordinates using mouse position and 'C' key press
         This avoids any mouse clicks during registration"""
         print(f"Please position your mouse over {self.num_coords} different locations and press 'C' key to register each coordinate.")
-        print("NO clicks will be performed during registration.")
         
         # Track state of 'C' key (virtual key code 0x43)
         prev_key_state = 0
-        
         while len(self.coords) < self.num_coords:
             # Check if 'C' key is pressed
-            curr_key_state = win32api.GetKeyState(0x43)  # 0x43 is the virtual key code for 'C' key
+            curr_key_state = win32api.GetKeyState(0x43)
             
             # Detect press (transition from not pressed to pressed)
             if curr_key_state < 0 and prev_key_state >= 0:
@@ -45,16 +42,9 @@ class PixelChecker:
         
     def is_pixel_white(self, x, y, threshold=240):
         """Check if a pixel at (x,y) is white using mss"""
-        # Define a small region around the pixel
         region = {'top': y, 'left': x, 'width': 1, 'height': 1}
-        
-        # Capture the screen region
-        screenshot = self.sct.grab(region)
-        
-        # Convert to numpy array for easier processing
+        screenshot = self.sct.grab(region) # Capture the screen region
         img = np.array(screenshot)
-        
-        # Get RGB values (mss returns BGRA)
         b, g, r = img[0, 0, 0], img[0, 0, 1], img[0, 0, 2]
         
         # Check if the pixel is approximately white
@@ -74,28 +64,19 @@ class PixelChecker:
     
     def click_at(self, x, y):
         """Simulate mouse click at specific coordinates"""
-        # Store the current mouse position
-        old_x, old_y = win32api.GetCursorPos()
-        
-        # Move mouse to the target position
-        win32api.SetCursorPos((x, y))
-        
-        # Perform the click
+        old_x, old_y = win32api.GetCursorPos() # Store the current mouse position
+        win32api.SetCursorPos((x, y)) # Move mouse to the target position
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.05)  # Short delay
+        time.sleep(0.05) # Short delay
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
-        
-        # Optional: move mouse back to original position
-        win32api.SetCursorPos((old_x, old_y))
-        
+        win32api.SetCursorPos((old_x, old_y)) # make Optional: move mouse back to original position
         print(f"Clicked at ({x}, {y})")
     
     def execute_white_sequence(self):
         """Click all coordinates in the white sequence in order"""
         print(f"Executing sequence of {len(self.white_sequence)} clicks...")
         
-        # Make a copy of the queue to preserve original sequence
-        sequence_copy = list(self.white_sequence)
+        sequence_copy = list(self.white_sequence) # Make a copy of the queue to preserve original sequence
         
         # Click each coordinate in order
         for i, coord_index in enumerate(sequence_copy):
@@ -114,9 +95,7 @@ class PixelChecker:
         print(f"Monitoring coordinates. Will click sequence if no new white pixels for {timeout} seconds.")
         print("Press Ctrl+C to exit.")
         
-        # Keep track of previous state for each coordinate
-        # False = not white, True = white
-        previous_states = [False] * len(self.coords)
+        previous_states = [False] * len(self.coords) # Keep track of previous state for each coordinate
         
         try:
             while True:
@@ -125,19 +104,16 @@ class PixelChecker:
                 for i, (x, y) in enumerate(self.coords):
                     is_white_now = self.is_pixel_white(x, y)
                     
-                    # If it wasn't white before but is white now, notify and add to sequence
                     if not previous_states[i] and is_white_now:
                         print(f"Coord {i+1} is now white")
                         self.white_sequence.append(i)
                         self.last_white_detection = time.time()
                         any_new_white = True
                     
-                    # Update the previous state
-                    previous_states[i] = is_white_now
+                    previous_states[i] = is_white_now # Update the previous state
                 
-                # Check if we should execute the sequence
                 if (not any_new_white and 
-                    len(self.white_sequence) > 0 and 
+                    self.white_sequence and # checks if there are any white coordinates
                     time.time() - self.last_white_detection > timeout):
                     self.execute_white_sequence()
                 
@@ -149,22 +125,16 @@ def main():
     # Create pixel checker instance
     checker = PixelChecker()
     
-    # Show instructions
-    print("===== Sequence Memory Clicker =====")
+    print("===== Sequence Memory AI =====")
     print("This tool will remember which coordinates turn white and then click them in order.")
-    print("INSTRUCTIONS:")
-    print("1. First, you'll register 9 coordinates to monitor")
-    print("2. Position your mouse over each point and press 'C' key (no clicks needed)")
-    print("3. The program will monitor these spots for white pixels")
-    print("4. When spots turn white, they'll be recorded in sequence")
-    print("5. If no new white pixels appear for 3 seconds, it will automatically click") 
-    print("   all recorded white spots in the order they appeared")
-    print("6. Press Ctrl+C at any time to exit")
+    print("1. Register 9 coordinates to monitor (mouse over + 'C' key)")
+    print("2. The program monitors these spots for white pixels")
+    print("3. After 3 seconds with no new white pixels, clicks will be performed in sequence")
+    print("4. Press Ctrl+C to exit")
     print("====================================")
     
     input("Press Enter to begin coordinate registration...")
     
-    # Collect coordinates
     checker.collect_coordinates()
     
     # Initial check
@@ -173,7 +143,6 @@ def main():
     
     # Start monitoring mode
     print("\nStarting monitoring mode with automatic sequence execution.")
-    print("When pixels turn white, they'll be recorded in sequence.")
     print("If no new white pixels are detected for 3 seconds, the recorded sequence will be clicked in order.")
     
     checker.monitor_coordinates(interval=0.1, timeout=3.0)
