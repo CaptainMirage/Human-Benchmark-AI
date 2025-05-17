@@ -2,7 +2,6 @@ import mss
 import numpy as np
 import win32api, win32con
 import time
-import sys
 from collections import deque
 
 class PixelChecker:
