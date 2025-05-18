@@ -16,7 +16,8 @@ class PixelChecker:
     def collect_coordinates(self):
         """Collect coordinates using mouse position and 'C' key press
         This avoids any mouse clicks during registration"""
-        print(f"Please position your mouse over {self.num_coords} different locations and press 'C' key to register each coordinate.")
+        print(f"Please position your mouse over {self.num_coords} different locations\
+               and press 'C' key to register each coordinate.")
         
         # Track state of 'C' key (virtual key code 0x43)
         prev_key_state = 0
