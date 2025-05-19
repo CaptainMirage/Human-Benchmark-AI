@@ -61,7 +61,16 @@ def react_to_color_changes(x, y):
                     break
 
 if __name__ == '__main__':
-    # Optionally switch windows using alt+tab if alttab is True
+    print("===== Reaction Time Test =====")
+    print("This tool monitors a specific screen pixel and clicks when a color change is detected.")
+    print("1. Position your mouse over the reaction test area.")
+    print("2. After the countdown, your position will be captured.")
+    print("3. Then, left click to begin monitoring.")
+    print("4. Press Ctrl+C at any time to exit.")
+    print("================================")
+    input("Press Enter to start...")
+    
+    # alt+tab switching option (default: false)
     alttab: bool = False
     if alttab:
         win32api.keybd_event(0x12, 0, 0, 0)  # Alt key down
@@ -69,7 +78,7 @@ if __name__ == '__main__':
         win32api.keybd_event(0x09, 0, win32con.KEYEVENTF_KEYUP, 0)  # Tab key up
         win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)  # Alt key up
 
-    print("Position your mouse over the reaction test area in 3 seconds")
+    print("Capturing your position in 3 seconds...")
     sleep(3)
     pos = win32api.GetCursorPos()
     print(f"Position captured: {pos}")
