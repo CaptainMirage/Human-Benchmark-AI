@@ -1,11 +1,149 @@
 import win32api, win32con
 import time
+import pyperclip  # For clipboard operations
 from typing import List, Tuple
 
 class MouseController:
-    def __init__(self, num_coords: int = 2) -> None:
+    def __init__(self, num_coords: int = 1) -> None:
         self.num_coords = num_coords
         self.coords: List[Tuple[int, int]] = []  # List of (x, y) coordinates
+
+    def wait_for_page_switch(self, seconds: int = 5) -> None:
+        """
+        Prompt the user to switch to the target page and wait for the specified number of seconds.
+        """
+        print(f"\nPlease switch to the page where you want to run the script...")
+        print(f"Waiting {seconds} seconds...")
+        
+        for i in range(seconds, 0, -1):
+            print(f"{i}...", end=" ", flush=True)
+            time.sleep(1)
+        print("Starting!")
+
+    def open_browser_console(self) -> None:
+        """
+        Open the browser console using Ctrl+Shift+K.
+        """
+        print("Opening browser console with Ctrl+Shift+K...")
+        
+        # Virtual key codes
+        CTRL_KEY = 0x11
+        SHIFT_KEY = 0x10
+        K_KEY = 0x4B
+        
+        # Press Ctrl+Shift+K
+        win32api.keybd_event(CTRL_KEY, 0, 0, 0)  # Ctrl down
+        win32api.keybd_event(SHIFT_KEY, 0, 0, 0)  # Shift down
+        time.sleep(0.1)
+        win32api.keybd_event(K_KEY, 0, 0, 0)  # K down
+        time.sleep(0.1)
+        win32api.keybd_event(K_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # K up
+        win32api.keybd_event(SHIFT_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Shift up
+        win32api.keybd_event(CTRL_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Ctrl up
+        
+        time.sleep(0.5)  # Wait for console to open
+
+    def paste_text(self, text: str) -> None:
+        """
+        Paste the provided text at the current cursor position.
+        """
+        # Save original clipboard content
+        original_clipboard = pyperclip.paste()
+        
+        # Copy new text to clipboard
+        pyperclip.copy(text)
+        time.sleep(0.1)
+        
+        # Paste using Ctrl+V
+        self.press_ctrl_v()
+        time.sleep(0.1)
+        
+        # Restore original clipboard content
+        pyperclip.copy(original_clipboard)
+
+    def press_enter(self) -> None:
+        """
+        Simulate pressing the Enter key.
+        """
+        ENTER_KEY = 0x0D
+        win32api.keybd_event(ENTER_KEY, 0, 0, 0)  # Enter down
+        time.sleep(0.05)
+        win32api.keybd_event(ENTER_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Enter up
+        print("Pressed Enter")
+        time.sleep(0.1)
+
+    def press_ctrl_v(self) -> None:
+        """
+        Simulate pressing Ctrl+V key combination.
+        """
+        # Virtual key codes: VK_CONTROL (0x11), 'V' (0x56)
+        CTRL_KEY = 0x11
+        V_KEY = 0x56
+        
+        # Press Ctrl key
+        win32api.keybd_event(CTRL_KEY, 0, 0, 0)  # Ctrl down
+        
+        # Press V key while holding Ctrl
+        win32api.keybd_event(V_KEY, 0, 0, 0)  # V down
+        time.sleep(0.05)
+        win32api.keybd_event(V_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # V up
+        
+        # Release Ctrl key
+        win32api.keybd_event(CTRL_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Ctrl up
+        
+        print("Pressed Ctrl+V")
+
+    def run_console_scripts(self) -> None:
+        """
+        Run scripts in the browser console to enable text selection and copying.
+        """
+        # Script 1: Enable text selection
+        enable_selection_comment = "// This script enables text selection on all elements of the page"
+        enable_selection_code = """if (typeof style === 'undefined') {
+  let style = document.createElement('style');
+  style.innerHTML = `* { -webkit-user-select: text !important; -moz-user-select: text !important; -ms-user-select: text !important; user-select: text !important; }`;
+  document.head.appendChild(style);
+}"""
+        
+        # Script 2: Enable copy functionality
+        enable_copy_comment = "// This script enables Ctrl+C and other clipboard operations on the page"
+        enable_copy_code = """(function() {
+  const allowCopy = (e) => {
+    e.stopImmediatePropagation();
+    return true;
+  };
+
+  ['copy', 'cut', 'paste', 'keydown', 'keypress', 'keyup'].forEach((evt) => {
+    document.addEventListener(evt, allowCopy, true);
+  });
+})();"""
+        
+        # Open console
+        self.open_browser_console()
+        
+        # Paste and run first script
+        print("\nRunning script to enable text selection...")
+        self.paste_text(enable_selection_comment)
+        self.press_enter()
+        self.paste_text(enable_selection_code)
+        self.press_enter()
+        time.sleep(0.3)
+        
+        # Paste and run second script
+        print("\nRunning script to enable copy functionality...")
+        self.paste_text(enable_copy_comment)
+        self.press_enter()
+        self.paste_text(enable_copy_code)
+        self.press_enter()
+        time.sleep(0.3)
+        
+        # Close console with Escape key
+        ESC_KEY = 0x1B
+        win32api.keybd_event(ESC_KEY, 0, 0, 0)  # Escape down
+        time.sleep(0.05)
+        win32api.keybd_event(ESC_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Escape up
+        print("Closed console with Escape key")
+        time.sleep(0.5)
 
     def collect_coordinates(self) -> List[Tuple[int, int]]:
         """
@@ -87,12 +225,32 @@ class MouseController:
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, end_x, end_y, 0, 0)
         print("Mouse up - drag complete")
 
+    def press_ctrl_c(self) -> None:
+        """
+        Simulate pressing Ctrl+C key combination.
+        """
+        # Virtual key codes: VK_CONTROL (0x11), 'C' (0x43)
+        CTRL_KEY = 0x11
+        C_KEY = 0x43
+        
+        # Press Ctrl key
+        win32api.keybd_event(CTRL_KEY, 0, 0, 0)  # Ctrl down
+        
+        # Press C key while holding Ctrl
+        win32api.keybd_event(C_KEY, 0, 0, 0)  # C down
+        time.sleep(0.05)
+        win32api.keybd_event(C_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # C up
+        
+        # Release Ctrl key
+        win32api.keybd_event(CTRL_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Ctrl up
+        
+        print("Pressed Ctrl+C")
+
     def execute_action_sequence(self) -> None:
         """
         Executes the defined sequence of actions:
         1. Click and drag from first to second coordinate
-        2. Right click in the middle of the coordinates
-        3. Press the 'C' key
+        2. Press Ctrl+C (copy operation)
         """
         if len(self.coords) < 2:
             print("Error: Need at least two coordinates to perform actions.")
@@ -106,31 +264,33 @@ class MouseController:
         print("\nPerforming click and drag operation...")
         self.drag_between_points(start_x, start_y, end_x, end_y)
         
-        # 2. Calculate the middle point and right click there
-        middle_x = (start_x + end_x) // 2
-        middle_y = (start_y + end_y) // 2
-        print(f"\nRight-clicking at middle point ({middle_x}, {middle_y})...")
-        self.right_click_at(middle_x, middle_y)
-        
-        # 3. Press the 'C' key (virtual key code 0x43)
-        print("\nPressing the 'C' key...")
-        self.press_key(0x43)
+        # 2. Press Ctrl+C to copy the selected content
+        print("\nPressing Ctrl+C to copy selection...")
+        self.press_ctrl_c()
         
         print("\nAction sequence completed!")
 
 
 def main() -> None:
-    controller = MouseController(num_coords=2)
+    controller = MouseController(num_coords=1)
     
-    print("===== Mouse Action Sequence Tool =====")
-    print("This tool will:")
-    print("1. Let you select 2 coordinates by clicking")
-    print("2. Click and drag from the first coordinate to the second")
-    print("3. Right-click at the middle point between coordinates")
-    print("4. Press the 'C' key")
-    print("====================================")
-    input("Press Enter to begin coordinate registration...")
+    print("===== Text Selection and Copy Tool =====")
+    print("This script helps you copy text from pages that prevent normal text selection.")
+    print("It works by:")
+    print("1. Injecting JavaScript that enables text selection and copying on any webpage")
+    print("2. Performing a triple-click at your selected position to select text")
+    print("3. Automatically copying the selected text to your clipboard")
+    print("This is particularly useful for websites that disable text selection or copying.")
+    print("=========================================")
+    input("Press Enter to begin...")
     
+    # Wait for user to switch to the target page
+    controller.wait_for_page_switch(5)
+    
+    # Run scripts to enable text selection and copying
+    controller.run_console_scripts()
+    
+    print("\nNow please click on the text you want to select and copy.")
     controller.collect_coordinates()
     
     print("\nStarting action sequence in 3 seconds...")
