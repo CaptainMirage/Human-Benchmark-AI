@@ -29,6 +29,7 @@ pip install -r requirements.txt
 ```bash
 python "path/to/the/script/code.py"
 ```
+
 <sub>
 i will add executable files later, for now im just working on making the "AI"
 </sub>
