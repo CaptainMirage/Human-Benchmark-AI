@@ -137,23 +137,23 @@ class MouseController:
         self.press_enter()
         time.sleep(0.3)
         
-        # Close console with Escape key
-        ESC_KEY = 0x1B
-        win32api.keybd_event(ESC_KEY, 0, 0, 0)  # Escape down
+        # Close console with f12 key
+        F12_KEY = 0x7B
+        win32api.keybd_event(F12_KEY, 0, 0, 0)  # Escape down
         time.sleep(0.05)
-        win32api.keybd_event(ESC_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Escape up
-        print("Closed console with Escape key")
+        win32api.keybd_event(F12_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Escape up
+        print("Closed console with f12 key")
         time.sleep(0.5)
 
     def collect_coordinates(self) -> List[Tuple[int, int]]:
         """
-        Collect coordinates using direct mouse clicks.
-        Prompts the user to click at the required number of positions.
+        Collect a single coordinate using direct mouse click.
+        Prompts the user to click at the desired position.
         """
-        print(f"Please click on {self.num_coords} different locations to register your coordinates.")
+        print("Please click on the location where you want to perform the triple-click.")
         
         prev_click_state = 0
-        while len(self.coords) < self.num_coords:
+        while len(self.coords) < 1:
             # Check left mouse button state (1 for left mouse button)
             curr_click_state = win32api.GetKeyState(0x01)
             
@@ -162,13 +162,13 @@ class MouseController:
                 # Get current mouse position
                 x, y = win32api.GetCursorPos()
                 self.coords.append((x, y))
-                print(f"Coordinate {len(self.coords)} registered: ({x}, {y})")
+                print(f"Coordinate registered: ({x}, {y})")
                 time.sleep(0.2)  # debounce delay
             
             prev_click_state = curr_click_state
             time.sleep(0.01)  # Small sleep to reduce CPU usage
             
-        print("All coordinates registered!")
+        print("Coordinate registered!")
         return self.coords
 
     def click_at(self, x: int, y: int) -> None:
@@ -246,23 +246,34 @@ class MouseController:
         
         print("Pressed Ctrl+C")
 
+    def triple_click_at(self, x: int, y: int) -> None:
+        """
+        Perform a triple-click at the specified coordinates.
+        """
+        win32api.SetCursorPos((x, y))
+        for _ in range(3):
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+            time.sleep(0.05)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+            time.sleep(0.1)  # Delay between clicks
+        print(f"Triple-clicked at ({x}, {y})")
+
     def execute_action_sequence(self) -> None:
         """
         Executes the defined sequence of actions:
-        1. Click and drag from first to second coordinate
+        1. Triple-click at the registered coordinate
         2. Press Ctrl+C (copy operation)
         """
-        if len(self.coords) < 2:
-            print("Error: Need at least two coordinates to perform actions.")
+        if len(self.coords) < 1:
+            print("Error: Need coordinate to perform actions.")
             return
         
-        # Get the two coordinates
-        start_x, start_y = self.coords[0]
-        end_x, end_y = self.coords[1]
+        # Get the coordinate
+        x, y = self.coords[0]
         
-        # 1. Click and drag from first to second coordinate
-        print("\nPerforming click and drag operation...")
-        self.drag_between_points(start_x, start_y, end_x, end_y)
+        # 1. Triple-click at the coordinate
+        print("\nPerforming triple-click operation...")
+        self.triple_click_at(x, y)
         
         # 2. Press Ctrl+C to copy the selected content
         print("\nPressing Ctrl+C to copy selection...")
