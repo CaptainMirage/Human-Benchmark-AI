@@ -94,7 +94,7 @@ class MouseController:
         
         print("Pressed Ctrl+V")
 
-    def run_console_scripts(self) -> None:
+    def run_initial_console_scripts(self) -> None:
         """
         Run scripts in the browser console to enable text selection and copying.
         this can technically work for other websites (specially the selection code), but i only tested it on human benchmark
@@ -120,13 +120,62 @@ class MouseController:
   });
 })();"""
         
-        # Script 3: Override stopImmediatePropagation to allow typing
+    def inject_typing_script(self) -> None:
+        """
+        Inject JavaScript to enable typing by overriding stopImmediatePropagation.
+        """
+        # Script to override stopImmediatePropagation to allow typing
         enable_typing_comment = "// This script allows the user to type again by overriding stopImmediatePropagation"
         enable_typing_code = """(function() {
   const originalStopImmediatePropagation = Event.prototype.stopImmediatePropagation;
   Event.prototype.stopImmediatePropagation = function() {
     // Override to do nothing
   };
+})();"""
+        
+        # Open console
+        self.open_browser_console()
+        
+        # Paste and run typing script
+        print("\nRunning script to enable typing...")
+        self.paste_text(enable_typing_comment)
+        self.press_enter()
+        self.paste_text(enable_typing_code)
+        self.press_enter()
+        time.sleep(0.3)
+        
+        # Close console with f12 key
+        F12_KEY = 0x7B
+        win32api.keybd_event(F12_KEY, 0, 0, 0)  # f12 down
+        time.sleep(0.05)
+        win32api.keybd_event(F12_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # f12 up
+        print("Closed console with f12 key")
+        time.sleep(0.5)
+
+    def run_console_scripts(self) -> None:
+        """
+        Run initial scripts in the browser console to enable text selection and copying.
+        this can technically work for other websites (specially the selection code), but i only tested it on human benchmark
+        """
+        # Script 1: Enable text selection
+        enable_selection_comment = "// This script enables text selection on all elements of the page"
+        enable_selection_code = """if (typeof style === 'undefined') {
+  let style = document.createElement('style');
+  style.innerHTML = `* { -webkit-user-select: text !important; -moz-user-select: text !important; -ms-user-select: text !important; user-select: text !important; }`;
+  document.head.appendChild(style);
+}"""
+        
+        # Script 2: Enable copy functionality
+        enable_copy_comment = "// This script enables Ctrl+C and other clipboard operations on the page"
+        enable_copy_code = """(function() {
+  const allowCopy = (e) => {
+    e.stopImmediatePropagation();
+    return true;
+  };
+
+  ['copy', 'cut', 'paste', 'keydown', 'keypress', 'keyup'].forEach((evt) => {
+    document.addEventListener(evt, allowCopy, true);
+  });
 })();"""
         
         # Open console
@@ -145,14 +194,6 @@ class MouseController:
         self.paste_text(enable_copy_comment)
         self.press_enter()
         self.paste_text(enable_copy_code)
-        self.press_enter()
-        time.sleep(0.3)
-        
-        # Paste and run third script
-        print("\nRunning script to enable typing...")
-        self.paste_text(enable_typing_comment)
-        self.press_enter()
-        self.paste_text(enable_typing_code)
         self.press_enter()
         time.sleep(0.3)
         
@@ -338,19 +379,23 @@ class MouseController:
         # Small delay to ensure clipboard is updated
         time.sleep(0.1)
         
-        # 3. Get and print the copied text
+        # 3. Inject typing script after copying
+        print("\nInjecting typing enabler script...")
+        self.inject_typing_script()
+        
+        # 4. Get and print the copied text
         copied_text = pyperclip.paste()
         print(f"\nCopied text: '{copied_text}'")
         
-        # 4. Click at the same coordinate to position cursor
+        # 6. Click at the same coordinate to position cursor
         print(f"\nClicking at ({x}, {y}) to position cursor...")
         self.click_at(x, y)
         
-        # 5. Wait 0.5 seconds before typing
+        # 7. Wait 0.5 seconds before typing
         print("Waiting 0.5 seconds before typing...")
         time.sleep(0.5)
         
-        # 6. Type out the copied text
+        # 8. Type out the copied text
         if copied_text:
             self.type_text(copied_text)
         else:
@@ -392,7 +437,7 @@ def main() -> None:
     # Wait for user to switch to the target page
     controller.wait_for_page_switch(5)
     
-    # Run scripts to enable text selection and copying
+    # Run initial scripts to enable text selection and copying
     controller.run_console_scripts()
     
     print("\nNow please click on the text you want to select and copy.")
