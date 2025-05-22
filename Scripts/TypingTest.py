@@ -4,9 +4,10 @@ import pyperclip  # For clipboard operations
 from typing import List, Tuple
 
 class MouseController:
-    def __init__(self, num_coords: int = 1) -> None:
+    def __init__(self, num_coords: int = 1, typing_delay: float = 0.01) -> None:
         self.num_coords = num_coords
         self.coords: List[Tuple[int, int]] = []  # List of (x, y) coordinates
+        self.typing_delay = typing_delay  # Delay between keystrokes
 
     def wait_for_page_switch(self, seconds: int = 5) -> None:
         """
@@ -119,6 +120,15 @@ class MouseController:
   });
 })();"""
         
+        # Script 3: Override stopImmediatePropagation to allow typing
+        enable_typing_comment = "// This script allows the user to type again by overriding stopImmediatePropagation"
+        enable_typing_code = """(function() {
+  const originalStopImmediatePropagation = Event.prototype.stopImmediatePropagation;
+  Event.prototype.stopImmediatePropagation = function() {
+    // Override to do nothing
+  };
+})();"""
+        
         # Open console
         self.open_browser_console()
         
@@ -135,6 +145,14 @@ class MouseController:
         self.paste_text(enable_copy_comment)
         self.press_enter()
         self.paste_text(enable_copy_code)
+        self.press_enter()
+        time.sleep(0.3)
+        
+        # Paste and run third script
+        print("\nRunning script to enable typing...")
+        self.paste_text(enable_typing_comment)
+        self.press_enter()
+        self.paste_text(enable_typing_code)
         self.press_enter()
         time.sleep(0.3)
         
@@ -234,11 +252,73 @@ class MouseController:
             time.sleep(0.1)  # Delay between clicks
         print(f"Triple-clicked at ({x}, {y})")
 
+    def type_char(self, char: str) -> None:
+        """
+        Type a single character using virtual key codes.
+        """
+        # Convert character to virtual key code
+        vk_code = ord(char.upper())
+        
+        # Handle special characters
+        if char == ' ':
+            vk_code = 0x20  # VK_SPACE
+        elif char == '.':
+            vk_code = 0xBE  # VK_OEM_PERIOD
+        elif char == ',':
+            vk_code = 0xBC  # VK_OEM_COMMA
+        elif char == '!':
+            # Shift + 1
+            win32api.keybd_event(0x10, 0, 0, 0)  # Shift down
+            win32api.keybd_event(0x31, 0, 0, 0)  # 1 down
+            time.sleep(0.01)
+            win32api.keybd_event(0x31, 0, win32con.KEYEVENTF_KEYUP, 0)  # 1 up
+            win32api.keybd_event(0x10, 0, win32con.KEYEVENTF_KEYUP, 0)  # Shift up
+            return
+        elif char == '?':
+            # Shift + /
+            win32api.keybd_event(0x10, 0, 0, 0)  # Shift down
+            win32api.keybd_event(0xBF, 0, 0, 0)  # VK_OEM_2 (/) down
+            time.sleep(0.01)
+            win32api.keybd_event(0xBF, 0, win32con.KEYEVENTF_KEYUP, 0)  # VK_OEM_2 up
+            win32api.keybd_event(0x10, 0, win32con.KEYEVENTF_KEYUP, 0)  # Shift up
+            return
+        
+        # Check if character needs shift (uppercase letters)
+        needs_shift = char.isupper() and char.isalpha()
+        
+        if needs_shift:
+            win32api.keybd_event(0x10, 0, 0, 0)  # Shift down
+        
+        # Press the key
+        win32api.keybd_event(vk_code, 0, 0, 0)  # Key down
+        time.sleep(0.01)
+        win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)  # Key up
+        
+        if needs_shift:
+            win32api.keybd_event(0x10, 0, win32con.KEYEVENTF_KEYUP, 0)  # Shift up
+
+    def type_text(self, text: str) -> None:
+        """
+        Type out text character by character with the configured delay.
+        """
+        print(f"Typing text with {self.typing_delay}s delay between keystrokes...")
+        
+        for char in text:
+            self.type_char(char)
+            if self.typing_delay > 0:
+                time.sleep(self.typing_delay)
+        
+        print("Finished typing!")
+
     def execute_action_sequence(self) -> None:
         """
         Executes the defined sequence of actions:
         1. Triple-click at the registered coordinate
         2. Press Ctrl+C (copy operation)
+        3. Print the copied text
+        4. Click at the same coordinate
+        5. Wait 0.5 seconds
+        6. Type out the copied text
         """
         if len(self.coords) < 1:
             print("Error: Need coordinate to perform actions.")
@@ -255,19 +335,57 @@ class MouseController:
         print("\nPressing Ctrl+C to copy selection...")
         self.press_ctrl_c()
         
-        print("\nAction sequence completed!")
+        # Small delay to ensure clipboard is updated
+        time.sleep(0.1)
+        
+        # 3. Get and print the copied text
+        copied_text = pyperclip.paste()
+        print(f"\nCopied text: '{copied_text}'")
+        
+        # 4. Click at the same coordinate to position cursor
+        print(f"\nClicking at ({x}, {y}) to position cursor...")
+        self.click_at(x, y)
+        
+        # 5. Wait 0.5 seconds before typing
+        print("Waiting 0.5 seconds before typing...")
+        time.sleep(0.5)
+        
+        # 6. Type out the copied text
+        if copied_text:
+            self.type_text(copied_text)
+        else:
+            print("No text to type (clipboard empty)")
+        
+        print("\nAction sequence completed! Program ending.")
 
 
 def main() -> None:
-    controller = MouseController(num_coords=1)
+    # Ask user for typing delay
+    print("===== Text Selection and Auto-Type Tool =====")
+    print("Enter typing delay between keystrokes (in seconds):")
+    print("- 0 = No delay (fastest)")
+    print("- 0.01 = Very fast")
+    print("- 0.05 = Fast")
+    print("- 0.1 = Medium")
     
-    print("===== Text Selection and Copy Tool =====")
-    print("This script helps you copy text from pages that prevent normal text selection.")
-    print("It works by:")
-    print("1. Injecting JavaScript that enables text selection and copying on any webpage")
-    print("2. Performing a triple-click at your selected position to select text")
-    print("3. Automatically copying the selected text to your clipboard")
-    print("This is particularly useful for websites that disable text selection or copying.")
+    try:
+        typing_delay = float(input("Delay (default 0.01): ") or "0.01")
+        if typing_delay < 0:
+            typing_delay = 0
+    except ValueError:
+        typing_delay = 0.01
+        print("Invalid input, using default delay of 0.01s")
+    
+    controller = MouseController(num_coords=1, typing_delay=typing_delay)
+    
+    print(f"\nUsing typing delay: {typing_delay}s")
+    print("This script will:")
+    print("1. Enable text selection and copying on any webpage")
+    print("2. Triple-click at your selected position to select text")
+    print("3. Copy the selected text to clipboard")
+    print("4. Print the copied text")
+    print("5. Click at the same position and type out the text")
+    print("6. End the program")
     print("=========================================")
     input("Press Enter to begin...")
     
