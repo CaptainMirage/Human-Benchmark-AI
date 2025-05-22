@@ -96,6 +96,7 @@ class MouseController:
     def run_console_scripts(self) -> None:
         """
         Run scripts in the browser console to enable text selection and copying.
+        this can technically work for other websites (specially the selection code), but i only tested it on human benchmark
         """
         # Script 1: Enable text selection
         enable_selection_comment = "// This script enables text selection on all elements of the page"
@@ -139,9 +140,9 @@ class MouseController:
         
         # Close console with f12 key
         F12_KEY = 0x7B
-        win32api.keybd_event(F12_KEY, 0, 0, 0)  # Escape down
+        win32api.keybd_event(F12_KEY, 0, 0, 0)  # f12 down
         time.sleep(0.05)
-        win32api.keybd_event(F12_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # Escape up
+        win32api.keybd_event(F12_KEY, 0, win32con.KEYEVENTF_KEYUP, 0)  # f12 up
         print("Closed console with f12 key")
         time.sleep(0.5)
 
@@ -199,31 +200,6 @@ class MouseController:
         time.sleep(0.05)
         win32api.keybd_event(key_code, 0, win32con.KEYEVENTF_KEYUP, 0)  # Key up
         print(f"Pressed key with code {key_code}")
-
-    def drag_between_points(self, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
-        """
-        Click and hold at starting coordinates, drag to ending coordinates, then release.
-        """
-        # Move to starting position
-        win32api.SetCursorPos((start_x, start_y))
-        
-        # Click and hold
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, start_x, start_y, 0, 0)
-        print(f"Mouse down at ({start_x}, {start_y})")
-        
-        # Small delay before drag
-        time.sleep(0.2)
-        
-        # Move to end position (this creates the drag effect)
-        win32api.SetCursorPos((end_x, end_y))
-        print(f"Dragged to ({end_x}, {end_y})")
-        
-        # Small delay before release
-        time.sleep(0.2)
-        
-        # Release mouse button
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, end_x, end_y, 0, 0)
-        print("Mouse up - drag complete")
 
     def press_ctrl_c(self) -> None:
         """
