@@ -383,9 +383,9 @@ class MouseController:
         self.paste_text_fast(text)
         print("Finished ultra-fast typing!")
 
-    def type_text_robust(self, text: str) -> None:
+    def type_text(self, text: str) -> None:
         """
-        Type out text character by character with robust error handling.
+        Type out text character by character with error handling.
         """
         print(f"Typing text with {self.typing_delay}s delay between keystrokes...")
         
@@ -452,10 +452,11 @@ class MouseController:
         if copied_text:
             if self.typing_delay == 0:
                 # Ultra-fast mode: use clipboard paste
-                self.type_text_ultra_fast(copied_text)
+                # self.type_text_ultra_fast(copied_text)
+                print("⚠️ ULTRA-FAST TYPING CURRENTLY UNDER CONSTRUCTION DUMBASS ⚠️")
             else:
                 # Regular mode: use robust character-by-character typing
-                self.type_text_robust(copied_text)
+                self.type_text(copied_text)
         else:
             print("No text to type (clipboard empty)")
         
@@ -466,7 +467,7 @@ def main() -> None:
     # Ask user for typing delay
     print("===== Enhanced Text Selection and Auto-Type Tool =====")
     print("Enter typing delay between keystrokes (in seconds):")
-    print("- 0 = Ultra-fast (clipboard paste method)")
+    print("- 0 = Ultra-fast (clipboard paste method) ⚠️ CURRENTLY UNDER CONSTRUCTION ⚠️")
     print("- 0.001 = Extremely fast")
     print("- 0.005 = Very fast")
     print("- 0.01 = Fast")
@@ -483,9 +484,9 @@ def main() -> None:
     controller = MouseController(num_coords=1, typing_delay=typing_delay)
     
     if typing_delay == 0:
-        print(f"\nUsing ULTRA-FAST mode (clipboard paste)")
+        print(f"\nUsing ULTRA-FAST mode (clipboard paste) ⚠️ I SAID ITS CURRENTLY UNDER CONSTRUCTION DUMBASS ⚠️")
     else:
-        print(f"\nUsing robust typing mode with {typing_delay}s delay")
+        print(f"\nUsing typing mode with {typing_delay}s delay")
     
     print("This script will:")
     print("1. Enable text selection and copying on any webpage")
