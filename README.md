@@ -20,12 +20,14 @@ It can beat the sh*t out of these so far (I know, very impressive):
 - Typing Test
 
 ## How Do I Use This?
+> Evan if you have somehow found this project, use it to your hearts content, i would be honored
+
 1. Install Python (3.12+ recommended)
 2. Install the requirements (that doesnt exist yet):
 ```bash
 pip install -r requirements.txt
 ```
-3. Run the script you want (no manuals yet):
+3. Run the script you want (no full manuals yet):
 ```bash
 python "path/to/the/script/code.py"
 ```
@@ -43,6 +45,18 @@ I made this for fun. Can't be f*cked updating it or anything, so don't expect an
 
 ## Contributing
 LMAO
+
+## Credits
+- as said, Project inspired by [Code Bullet](https://www.youtube.com/@codebullet)
+  - Check out his amazing AI bullshit!
+- Libraries and resources used:
+  - **win32api/win32con**: Ultra-low latency Windows API interactions for mouse/keyboard control
+  - **mss**: High-performance screen capture (~2-3ms latency)
+  - **numpy**: Fast array operations for pixel analysis
+  - **pyperclip/win32clipboard**: Clipboard manipulation for ultra-fast text input
+  - Custom event injection for bypassing browser features
+  - Direct Windows API calls for microsecond-precise timing
+  - JavaScript DOM manipulation for easier access to the website
 
 ## License
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License.
