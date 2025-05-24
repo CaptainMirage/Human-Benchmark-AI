@@ -17,7 +17,7 @@ It can beat the sh*t out of these so far (I know, very impressive):
 - ~~Verbal Memory~~
 - ~~Chimp Test~~
 - ~~Visual Memory~~
-- ~~Typing~~
+- Typing Test
 
 ## How Do I Use This?
 1. Install Python (3.12+ recommended)
