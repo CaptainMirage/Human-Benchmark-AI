@@ -19,6 +19,11 @@ It can beat the sh*t out of these so far:
 - ~~Visual Memory~~
 - Typing Test
 
+Technical features:
+  - Low-level Windows API input simulation
+  - Microsecond-precise timing
+  - JavaScript injection for bypassing website restrictions
+
 ## How Do I Use This?
 > Evan if you have somehow found this project, use it to your hearts content, i would be honored
 
@@ -54,9 +59,6 @@ LMAO
   - **mss**: High-performance screen capture (~2-3ms latency)
   - **numpy**: Fast array operations for pixel analysis
   - **pyperclip/win32clipboard**: Clipboard manipulation for ultra-fast text input
-  - Custom event injection for bypassing browser features
-  - Direct Windows API calls for microsecond-precise timing
-  - JavaScript DOM manipulation for easier access to the website
 
 ## License
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License.
