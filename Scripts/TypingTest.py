@@ -156,6 +156,7 @@ class MouseController:
         # Open console
         self.open_browser_console()
         
+        # TODO - make the paste thing more efficient maybe even make it just output it somehow?
         # Paste and run typing script
         print("\nRunning script to enable typing...")
         self.paste_text(enable_typing_comment)
