@@ -2,6 +2,7 @@ import mss
 import numpy as np
 import win32api, win32con
 import time
+from typing import Optional
 
 class AimTrainer:
     def __init__(self, step_size: int = 69, target_color: str = "#95c3e8") -> None:
@@ -63,41 +64,78 @@ class AimTrainer:
 
     def click_at(self, x: int, y: int) -> None:
         """
-        Simulate a mouse click at the specified (x, y) position.
+        Simulate a mouse click at the specified (x, y) position with no delays.
         """
         old_x, old_y = win32api.GetCursorPos()  # Save current position
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.02)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
         win32api.SetCursorPos((old_x, old_y))  # Move mouse back to original position
         print(f"Target found and clicked at ({x}, {y})")
 
+    def get_scan_coordinates(self) -> list:
+        """
+        Generate all coordinates to scan in the defined area.
+        """
+        if not self.scan_area:
+            return []
+        
+        x1, y1, x2, y2 = self.scan_area
+        coords = []
+        for y in range(y1, y2, self.step_size):
+            for x in range(x1, x2, self.step_size):
+                coords.append((x, y))
+        return coords
+    
+    def capture_scan_area(self) -> Optional[np.ndarray]:
+        """
+        Capture the entire scan area as a single screenshot for faster processing.
+        """
+        if not self.scan_area:
+            return None
+            
+        x1, y1, x2, y2 = self.scan_area
+        region = {'top': y1, 'left': x1, 'width': x2 - x1, 'height': y2 - y1}
+        screenshot = self.sct.grab(region)
+        return np.array(screenshot)
+
     def scan_and_click(self) -> None:
         """
-        Scan the defined area in a grid pattern and click target colors as found.
+        Scan the defined area for target colors and click all found targets instantly.
         """
         if not self.scan_area:
             print("No scan area defined!")
             return
 
+        # Capture entire area once
+        img = self.capture_scan_area()
+        if img is None:
+            return
+            
         x1, y1, x2, y2 = self.scan_area
         targets_found = 0
+        target_r, target_g, target_b = self.target_rgb
+        tolerance = 10
         
-        # Scan in a grid pattern with step_size intervals
+        # Check all scan points in the captured image
         for y in range(y1, y2, self.step_size):
             for x in range(x1, x2, self.step_size):
-                if self.is_pixel_target_color(x, y):
-                    self.click_at(x, y)
-                    targets_found += 1
-                    time.sleep(0.1)  # Brief delay between clicks
-        
-        if targets_found == 0:
-            print("No targets found in current scan")
-        else:
-            print(f"Scan complete - found and clicked {targets_found} targets")
+                # Convert absolute coordinates to relative coordinates in the image
+                rel_x = x - x1
+                rel_y = y - y1
+                
+                # Check bounds
+                if rel_y < img.shape[0] and rel_x < img.shape[1]:
+                    b, g, r = img[rel_y, rel_x, 0], img[rel_y, rel_x, 1], img[rel_y, rel_x, 2]
+                    
+                    # Check if pixel matches target color
+                    if (abs(r - target_r) <= tolerance and 
+                        abs(g - target_g) <= tolerance and 
+                        abs(b - target_b) <= tolerance):
+                        self.click_at(x, y)
+                        targets_found += 1
 
-    def monitor_and_click(self, interval: float = 0.1) -> None:
+    def monitor_and_click(self, interval: float = 0.01) -> None:
         """
         Continuously monitor the scan area and click targets as they appear.
         """
@@ -163,7 +201,7 @@ def main() -> None:
     
     print(f"\nStarting continuous monitoring and clicking.")
     print(f"Scanning for color {target_color} every {step_size} pixels in the defined area.")
-    trainer.monitor_and_click(interval=0.05)
+    trainer.monitor_and_click(interval=0.001)
 
 if __name__ == "__main__":
     main()
