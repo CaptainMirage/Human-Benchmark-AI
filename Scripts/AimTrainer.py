@@ -3,27 +3,31 @@ import numpy as np
 import win32api, win32con
 import time
 from typing import Optional
+import math
 
 class AimTrainer:
-    def __init__(self, step_size: int = 69, target_color: str = "#95c3e8") -> None:
-        self.step_size = step_size
+    def __init__(self, step_size: Optional[int] = None, target_size: int = 160, target_color: str = "#95c3e8") -> None:
+        self.target_size = target_size
+        # Auto-calculate step size if not provided - use target_size/3 for guaranteed coverage
+        self.step_size = step_size if step_size is not None else max(target_size // 3, 15)
         self.target_color = target_color
         self.target_rgb = self.hex_to_rgb(target_color)
         self.coords = []  # List of (x, y) coordinates for corners
         self.sct = mss.mss()
         self.scan_area = None  # Will store (x1, y1, x2, y2)
+        
+        # Fast duplicate prevention - track recent clicks
+        self.recent_clicks = []  # List of (x, y, timestamp)
+        self.click_distance_threshold = target_size * 0.8  # 80% of target size
+        self.click_memory_duration = 0.1  # Keep clicks in memory for 100ms
 
     def hex_to_rgb(self, hex_color: str) -> tuple:
-        """
-        Convert hex color to RGB tuple.
-        """
+        """Convert hex color to RGB tuple."""
         hex_color = hex_color.lstrip('#')
         return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
     def collect_coordinates(self) -> list:
-        """
-        Collect two corner coordinates using mouse position upon 'C' key press.
-        """
+        """Collect two corner coordinates using mouse position upon 'C' key press."""
         print("Please position your mouse over 2 corner positions and press 'C' to register each coordinate.")
         print("These will define the rectangular scanning area.")
         prev_key_state = 0
@@ -32,65 +36,53 @@ class AimTrainer:
 
             # Detect press (transition from not pressed to pressed)
             if curr_key_state < 0 and prev_key_state >= 0:
-                # Get current mouse position
                 x, y = win32api.GetCursorPos()
                 self.coords.append((x, y))
                 print(f"Corner {len(self.coords)} registered: ({x}, {y})")
                 time.sleep(0.2)  # debounce delay
             prev_key_state = curr_key_state
-            time.sleep(0.01)  # Small sleep to reduce CPU usage
+            time.sleep(0.01)
             
         # Define scan area from the two corners
         x1, y1 = self.coords[0]
         x2, y2 = self.coords[1]
         self.scan_area = (min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
         print(f"Scan area defined: ({self.scan_area[0]}, {self.scan_area[1]}) to ({self.scan_area[2]}, {self.scan_area[3]})")
+        print(f"Using step size: {self.step_size} pixels (auto-calculated from target size: {self.target_size})")
         return self.coords
 
-    def is_pixel_target_color(self, x: int, y: int, tolerance: int = 10) -> bool:
-        """
-        Check if the pixel at (x, y) matches the target color within tolerance.
-        """
-        region = {'top': y, 'left': x, 'width': 1, 'height': 1}
-        screenshot = self.sct.grab(region)
-        img = np.array(screenshot)
-        b, g, r = img[0, 0, 0], img[0, 0, 1], img[0, 0, 2]
+    def is_too_close_to_recent_click(self, x: int, y: int) -> bool:
+        """Check if coordinates are too close to a recent click to avoid duplicates."""
+        current_time = time.time()
         
-        # Check if the pixel matches target color within tolerance
-        target_r, target_g, target_b = self.target_rgb
-        return (abs(r - target_r) <= tolerance and 
-                abs(g - target_g) <= tolerance and 
-                abs(b - target_b) <= tolerance)
+        # Clean old clicks (older than click_memory_duration)
+        self.recent_clicks = [(cx, cy, ct) for cx, cy, ct in self.recent_clicks 
+                             if current_time - ct < self.click_memory_duration]
+        
+        # Check distance to recent clicks
+        for cx, cy, _ in self.recent_clicks:
+            distance = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+            if distance < self.click_distance_threshold:
+                return True
+        return False
 
     def click_at(self, x: int, y: int) -> None:
-        """
-        Simulate a mouse click at the specified (x, y) position with no delays.
-        """
+        """Simulate a mouse click at the specified (x, y) position with no delays."""
+        # Check if too close to recent click
+        if self.is_too_close_to_recent_click(x, y):
+            return
+            
         old_x, old_y = win32api.GetCursorPos()  # Save current position
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
-        win32api.SetCursorPos((old_x, old_y))  # Move mouse back to original position
+        
+        # Add to recent clicks
+        self.recent_clicks.append((x, y, time.time()))
         print(f"Target found and clicked at ({x}, {y})")
 
-    def get_scan_coordinates(self) -> list:
-        """
-        Generate all coordinates to scan in the defined area.
-        """
-        if not self.scan_area:
-            return []
-        
-        x1, y1, x2, y2 = self.scan_area
-        coords = []
-        for y in range(y1, y2, self.step_size):
-            for x in range(x1, x2, self.step_size):
-                coords.append((x, y))
-        return coords
-    
     def capture_scan_area(self) -> Optional[np.ndarray]:
-        """
-        Capture the entire scan area as a single screenshot for faster processing.
-        """
+        """Capture the entire scan area as a single screenshot for faster processing."""
         if not self.scan_area:
             return None
             
@@ -100,9 +92,7 @@ class AimTrainer:
         return np.array(screenshot)
 
     def scan_and_click(self) -> None:
-        """
-        Scan the defined area for target colors and click all found targets instantly.
-        """
+        """Scan the defined area for target colors and click found targets instantly."""
         if not self.scan_area:
             print("No scan area defined!")
             return
@@ -135,12 +125,11 @@ class AimTrainer:
                         self.click_at(x, y)
                         targets_found += 1
 
-    def monitor_and_click(self, interval: float = 0.01) -> None:
-        """
-        Continuously monitor the scan area and click targets as they appear.
-        """
+    def monitor_and_click(self, interval: float = 0.001) -> None:
+        """Continuously monitor the scan area and click targets as they appear."""
         print(f"Monitoring scan area for color {self.target_color} (RGB: {self.target_rgb})")
-        print(f"Scanning every {self.step_size} pixels")
+        print(f"Target size: {self.target_size}px, Step size: {self.step_size}px")
+        print(f"Duplicate prevention distance: {self.click_distance_threshold:.1f}px")
         print("Press Ctrl+C to exit.")
         
         try:
@@ -151,20 +140,30 @@ class AimTrainer:
             print("\nMonitoring stopped.")
 
 def get_user_input() -> tuple:
-    """
-    Get user preferences for step size and target color.
-    """
-    # Get step size
-    step_input = input("Enter step size for scanning (default 69): ").strip()
-    step_size = 69
+    """Get user preferences for target size, step size and target color."""
+    # Get target size
+    target_input = input("Enter target size in pixels (default 160): ").strip()
+    target_size = 160
+    if target_input:
+        try:
+            target_size = int(target_input)
+            if target_size <= 0:
+                print("Invalid target size, using default (160)")
+                target_size = 160
+        except ValueError:
+            print("Invalid target size, using default (160)")
+    
+    # Get step size (optional)
+    step_input = input(f"Enter step size for scanning (default auto-calculated from target size = {target_size//3}): ").strip()
+    step_size = None  # Will auto-calculate
     if step_input:
         try:
             step_size = int(step_input)
             if step_size <= 0:
-                print("Invalid step size, using default (69)")
-                step_size = 69
+                print("Invalid step size, will auto-calculate")
+                step_size = None
         except ValueError:
-            print("Invalid step size, using default (69)")
+            print("Invalid step size, will auto-calculate")
     
     # Get target color
     color_input = input("Enter target color in hex (default #95c3e8): ").strip()
@@ -180,27 +179,30 @@ def get_user_input() -> tuple:
         else:
             print("Invalid hex color format, using default (#95c3e8)")
     
-    return step_size, target_color
+    return target_size, step_size, target_color
 
 def main() -> None:
-    print("===== Aim Trainer Color Clicker =====")
+    print("===== Optimized Aim Trainer Color Clicker =====")
     print("This tool scans a rectangular area for a specific color and clicks targets as found.")
-    print("1. Configure step size and target color")
-    print("2. Register 2 corner coordinates to define scan area")
-    print("3. Continuous monitoring and clicking begins")
-    print("4. Press Ctrl+C to exit")
-    print("=====================================")
+    print("Features:")
+    print("- Auto-calculated step size based on target size for guaranteed coverage")
+    print("- Duplicate click prevention with distance-based filtering")
+    print("- Optimized for maximum speed with minimal delays")
+    print("===============================================")
     
-    step_size, target_color = get_user_input()
-    print(f"Using step size: {step_size}, target color: {target_color}")
+    target_size, step_size, target_color = get_user_input()
+    print(f"Using target size: {target_size}px, target color: {target_color}")
+    if step_size:
+        print(f"Using custom step size: {step_size}px")
+    else:
+        print(f"Auto-calculating step size: {target_size//3}px")
     
-    trainer = AimTrainer(step_size=step_size, target_color=target_color)
+    trainer = AimTrainer(step_size=step_size, target_size=target_size, target_color=target_color)
     
     input("Press Enter to begin coordinate registration...")
     trainer.collect_coordinates()
     
     print(f"\nStarting continuous monitoring and clicking.")
-    print(f"Scanning for color {target_color} every {step_size} pixels in the defined area.")
     trainer.monitor_and_click(interval=0.001)
 
 if __name__ == "__main__":
