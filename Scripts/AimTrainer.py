@@ -182,11 +182,10 @@ def get_user_input() -> tuple:
     return target_size, step_size, target_color
 
 def main() -> None:
-    print("===== Optimized Aim Trainer Color Clicker =====")
+    print("===== Aim Trainer Clicker =====")
     print("This tool scans a rectangular area for a specific color and clicks targets as found.")
     print("Features:")
     print("- Auto-calculated step size based on target size for guaranteed coverage")
-    print("- Duplicate click prevention with distance-based filtering")
     print("- Optimized for maximum speed with minimal delays")
     print("===============================================")
     
@@ -203,7 +202,7 @@ def main() -> None:
     trainer.collect_coordinates()
     
     print(f"\nStarting continuous monitoring and clicking.")
-    trainer.monitor_and_click(interval=0.001)
+    trainer.monitor_and_click(interval=0)
 
 if __name__ == "__main__":
     main()
