@@ -184,9 +184,10 @@ def get_user_input() -> tuple:
 def main() -> None:
     print("===== Aim Trainer Clicker =====")
     print("This tool scans a rectangular area for a specific color and clicks targets as found.")
-    print("Features:")
     print("- Auto-calculated step size based on target size for guaranteed coverage")
     print("- Optimized for maximum speed with minimal delays")
+    print("NOTE - the step size is dependant on the website zoom you are using\n\
+          i recommend 160% zoom on a website with 100% windows UI zoom, it worked 99% of the time")
     print("===============================================")
     
     target_size, step_size, target_color = get_user_input()
