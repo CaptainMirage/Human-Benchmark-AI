@@ -1,5 +1,7 @@
 <h1 align="center">Human-Benchmark-AI</h1>
 
+><p align="center"><small>project inspired by code bullet</small></p>
+
 ![DevStage Badge](https://img.shields.io/badge/Development_Stage-Prototype-%234be819?style=flat)
 ![GitHub License](https://img.shields.io/github/license/CaptainMirage/Human-Benchmark-AI)
 ![Total Lines](https://tokei.rs/b1/github/CaptainMirage/Human-Benchmark-AI?category=code&style=flat)
@@ -9,7 +11,6 @@
 <!-- ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/CaptainMirage/Human-Benchmark-AI/release.yml?style=flat) -->
 <!-- ![Update Badge](https://img.shields.io/badge/Latest_Update-¯\__(ツ)__\/¯-%2318a5a3?) -->
 
-><p align="center"><small>project inspired by code bullet</small></p>
 
 Ever dreamed of having superhuman reaction times?
 
