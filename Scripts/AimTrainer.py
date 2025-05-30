@@ -125,7 +125,7 @@ class AimTrainer:
                         self.click_at(x, y)
                         targets_found += 1
 
-    def monitor_and_click(self, interval: float = 0.001) -> None:
+    def monitor_and_click(self, interval: float = 0) -> None:
         """Continuously monitor the scan area and click targets as they appear."""
         print(f"Monitoring scan area for color {self.target_color} (RGB: {self.target_rgb})")
         print(f"Target size: {self.target_size}px, Step size: {self.step_size}px")
@@ -135,7 +135,7 @@ class AimTrainer:
         try:
             while True:
                 self.scan_and_click()
-                time.sleep(interval)
+                # time.sleep(interval)
         except KeyboardInterrupt:
             print("\nMonitoring stopped.")
 
