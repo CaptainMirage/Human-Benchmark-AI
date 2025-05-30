@@ -124,7 +124,7 @@ def main() -> None:
     print("1. Register 9 coordinates to monitor (mouse over + 'C' key)")
     print("2. The program monitors these spots for white pixels")
     print("3. After 3 seconds with no new white pixels, clicks will be performed in sequence")
-    print("4. Press Ctrl+C to exit")
+    print("4. Press Ctrl+C to exit (probably)")
     print("====================================")
     input("Press Enter to begin coordinate registration...")
     
