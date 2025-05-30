@@ -66,7 +66,7 @@ if __name__ == '__main__':
     print("1. Position your mouse over the reaction test area.")
     print("2. After the countdown, your position will be captured.")
     print("3. Then, left click to begin monitoring.")
-    print("4. Press Ctrl+C at any time to exit.")
+    print("4. Press Ctrl+C at any time to exit. (probably)")
     print("================================")
     input("Press Enter to start...")
     
