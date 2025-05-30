@@ -485,7 +485,8 @@ def main() -> None:
     controller = MouseController(num_coords=1, typing_delay=typing_delay)
     
     if typing_delay == 0:
-        print(f"\nUsing ULTRA-FAST mode (clipboard paste) ⚠️ I SAID ITS CURRENTLY UNDER CONSTRUCTION DUMBASS ⚠️")
+        # print(f"\nUsing ULTRA-FAST mode (clipboard paste)")
+        print("⚠️ I SAID ITS CURRENTLY UNDER CONSTRUCTION DUMBASS ⚠️")
     else:
         print(f"\nUsing typing mode with {typing_delay}s delay")
     
@@ -493,8 +494,8 @@ def main() -> None:
     print("1. Enable text selection and copying on any webpage")
     print("2. Triple-click at your selected position to select text")
     print("3. Copy the selected text to clipboard")
-    print("4. Print the copied text")
-    print("5. Click at the same position and type out the text")
+    print("4. Print the copied text (just for lookie looks)")
+    print("5. Click at the same position and type out the text (and hopefully not fuck up)")
     print("6. End the program")
     print("=========================================")
     input("Press Enter to begin...")
