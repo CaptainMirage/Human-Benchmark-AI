@@ -12,7 +12,7 @@ Well, this is the wrong place and year to be in (the year being 2025), This is a
 It can beat the sh*t out of these so far:
 - Reaction Time
 - Sequence Memory
-- ~~Aim Trainer~~
+- Aim Trainer
 - ~~Number Memory~~
 - ~~Verbal Memory~~
 - ~~Chimp Test~~
