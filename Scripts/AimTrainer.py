@@ -205,4 +205,5 @@ def main() -> None:
     trainer.monitor_and_click(interval=0)
 
 if __name__ == "__main__":
+    # TODO - add a way to stop the program instead of reloading the website to not let the program see lmao
     main()
