@@ -9,6 +9,7 @@ class CubeGridCounter:
         self.sct = mss.mss()
         self.target_color = (0x2b, 0x87, 0xd1)  # RGB values for #2b87d1
         self.tolerance = 0  # Color matching tolerance
+        self.screenshot = None  # Store the single screenshot
 
     def collect_coordinates(self) -> list:
         """
@@ -32,24 +33,67 @@ class CubeGridCounter:
         print("Both corners registered!")
         return self.coords
 
+    def take_single_screenshot(self) -> None:
+        """
+        Take a single screenshot of the defined region and store it for analysis.
+        """
+        x1, y1 = self.coords[0]
+        x2, y2 = self.coords[1]
+        
+        # Ensure we have proper min/max values
+        min_x, max_x = min(x1, x2), max(x1, x2)
+        min_y, max_y = min(y1, y2), max(y1, y2)
+        
+        # Define the region to capture
+        region = {
+            'top': min_y,
+            'left': min_x,
+            'width': max_x - min_x,
+            'height': max_y - min_y
+        }
+        
+        print(f"Taking screenshot of region: {region}")
+        screenshot = self.sct.grab(region)
+        self.screenshot = np.array(screenshot)
+        self.screenshot_offset = (min_x, min_y)  # Store offset for coordinate conversion
+        print("Screenshot captured successfully!")
+
     def is_target_color(self, r: int, g: int, b: int) -> bool:
         """
         Check if the RGB values match the target color within tolerance.
         """
         target_r, target_g, target_b = self.target_color
-        return (abs(r - target_r) <= self.tolerance and 
-                abs(g - target_g) <= self.tolerance and 
-                abs(b - target_b) <= self.tolerance)
+        return (abs(int(r) - target_r) <= self.tolerance and 
+                abs(int(g) - target_g) <= self.tolerance and 
+                abs(int(b) - target_b) <= self.tolerance)
+
+    def get_pixel_color_from_screenshot(self, x: int, y: int) -> tuple:
+        """
+        Get the RGB color of the pixel at (x, y) from the stored screenshot.
+        x, y are global screen coordinates.
+        """
+        if self.screenshot is None:
+            raise ValueError("No screenshot available. Call take_single_screenshot() first.")
+        
+        # Convert global coordinates to screenshot local coordinates
+        local_x = x - self.screenshot_offset[0]
+        local_y = y - self.screenshot_offset[1]
+        
+        # Check bounds
+        if (local_x < 0 or local_x >= self.screenshot.shape[1] or 
+            local_y < 0 or local_y >= self.screenshot.shape[0]):
+            raise IndexError(f"Coordinates ({x}, {y}) -> ({local_x}, {local_y}) out of screenshot bounds")
+        
+        # Extract RGB values (screenshot is in BGRA format)
+        b, g, r = self.screenshot[local_y, local_x, 0], self.screenshot[local_y, local_x, 1], self.screenshot[local_y, local_x, 2]
+        return (r, g, b)
 
     def get_pixel_color(self, x: int, y: int) -> tuple:
         """
         Get the RGB color of the pixel at (x, y).
+        This method is kept for compatibility but now uses the single screenshot.
         """
-        region = {'top': y, 'left': x, 'width': 1, 'height': 1}
-        screenshot = self.sct.grab(region)
-        img = np.array(screenshot)
-        b, g, r = img[0, 0, 0], img[0, 0, 1], img[0, 0, 2]
-        return (r, g, b)
+        return self.get_pixel_color_from_screenshot(x, y)
 
     def calculate_scan_line(self) -> tuple:
         """
@@ -81,7 +125,11 @@ class CubeGridCounter:
     def count_gaps(self) -> int:
         """
         Count the number of gaps (target color regions) in the vertical scan line.
+        Uses the single screenshot for all pixel color checks.
         """
+        # Take a single screenshot before analysis
+        self.take_single_screenshot()
+        
         x_pos, y_start, y_end = self.calculate_scan_line()
         gap_count = 0
         in_gap = False
@@ -89,7 +137,7 @@ class CubeGridCounter:
         print(f"Scanning from y={y_start} to y={y_end} at x={x_pos}")
         
         for y in range(y_start, y_end + 1):
-            r, g, b = self.get_pixel_color(x_pos, y)
+            r, g, b = self.get_pixel_color_from_screenshot(x_pos, y)
             is_target = self.is_target_color(r, g, b)
             
             if is_target and not in_gap:
@@ -119,7 +167,7 @@ class CubeGridCounter:
         """
         print("\n=== Starting Grid Analysis ===")
         
-        # Count gaps
+        # Count gaps (this will take the screenshot internally)
         gap_count = self.count_gaps()
         print(f"\nTotal gaps detected: {gap_count}")
         
@@ -137,17 +185,18 @@ def main() -> None:
     print("===== Cube Grid Counter =====")
     print("This tool counts cube grids by detecting gaps between them.")
     print("1. Register 2 opposite corners of the cube area (mouse over + 'C' key)")
-    print("2. The program scans a vertical line to detect gaps")
-    print("3. Calculates total cubes based on gap count: (gaps + 1)²")
-    print("4. Gap color: #2b87d1")
-    print("================================")
+    print("2. The program takes a single screenshot of the area")
+    print("3. Scans a vertical line to detect gaps using the screenshot")
+    print("4. Calculates total cubes based on gap count: (gaps + 1)²")
+    print("5. Gap color: #2b87d1")
+    print("===============================")
     input("Press Enter to begin coordinate registration...")
     
     counter.collect_coordinates()
     
     print(f"\nRegistered area: {counter.coords[0]} to {counter.coords[1]}")
     
-    input("\nPress Enter to start grid analysis...")
+    # Automatically start analysis after coordinate registration
     counter.analyze_grid()
     
     print("\nAnalysis complete!")
