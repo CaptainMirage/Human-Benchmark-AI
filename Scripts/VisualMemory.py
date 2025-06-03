@@ -10,6 +10,8 @@ class CubeGridCounter:
         self.target_color = (0x2b, 0x87, 0xd1)  # RGB values for #2b87d1
         self.tolerance = 0  # Color matching tolerance
         self.screenshot = None  # Store the single screenshot
+        self.grid_size = 0  # Store calculated grid size
+        self.cube_centers = []  # Store calculated cube centers
 
     def collect_coordinates(self) -> list:
         """
@@ -95,6 +97,22 @@ class CubeGridCounter:
         """
         return self.get_pixel_color_from_screenshot(x, y)
 
+    def verify_cube_center(self, x: int, y: int) -> bool:
+        """
+        Verify if the calculated center pixel is actually on a cube (not gap).
+        Returns True if pixel is NOT the gap color (i.e., is on a cube).
+        
+        Usage: Can be used to validate calculated centers before clicking:
+        - In calculate_cube_centers(): filter out invalid centers
+        - In click_all_cubes(): skip invalid centers
+        - As a debug tool to check calculation accuracy
+        """
+        try:
+            r, g, b = self.get_pixel_color_from_screenshot(x, y)
+            return not self.is_target_color(r, g, b)  # True if NOT gap color
+        except (ValueError, IndexError):
+            return False  # Consider out-of-bounds as invalid
+
     def calculate_scan_line(self) -> tuple:
         """
         Calculate the vertical scan line position and boundaries.
@@ -161,6 +179,79 @@ class CubeGridCounter:
         total_cubes = grid_dimension * grid_dimension
         return grid_dimension, total_cubes
 
+    def calculate_cube_centers(self) -> list:
+        """
+        Calculate the center coordinates of all cubes using relative positioning.
+        Returns list of (x, y) tuples representing cube centers.
+        """
+        if self.grid_size == 0:
+            raise ValueError("Grid size not calculated. Run analyze_grid() first.")
+        
+        x1, y1 = self.coords[0]
+        x2, y2 = self.coords[1]
+        
+        # Ensure we have proper min/max values
+        min_x, max_x = min(x1, x2), max(x1, x2)
+        min_y, max_y = min(y1, y2), max(y1, y2)
+        
+        # Calculate total dimensions
+        total_width = max_x - min_x
+        total_height = max_y - min_y
+        
+        # Calculate cell size (cube + gap space)
+        cell_width = total_width / self.grid_size
+        cell_height = total_height / self.grid_size
+        
+        centers = []
+        print(f"Calculating centers for {self.grid_size}x{self.grid_size} grid")
+        print(f"Cell dimensions: {cell_width:.1f} x {cell_height:.1f}")
+        
+        for row in range(self.grid_size):
+            for col in range(self.grid_size):
+                # Calculate center of each cell
+                center_x = min_x + (col * cell_width) + (cell_width / 2)
+                center_y = min_y + (row * cell_height) + (cell_height / 2)
+                
+                center_coord = (int(center_x), int(center_y))
+                centers.append(center_coord)
+                
+                # Optional: Uncomment to verify each center (but trusting the math as requested)
+                # is_valid = self.verify_cube_center(center_coord[0], center_coord[1])
+                # print(f"Cube [{row}][{col}]: {center_coord} - Valid: {is_valid}")
+        
+        print(f"Calculated {len(centers)} cube centers")
+        self.cube_centers = centers
+        return centers
+
+    def click_all_cubes(self) -> None:
+        """
+        Click on all calculated cube centers rapidly.
+        Waits 1 second before starting, then clicks without delays.
+        """
+        if not self.cube_centers:
+            raise ValueError("No cube centers calculated. Run calculate_cube_centers() first.")
+        
+        print(f"\nWaiting 1 second before clicking {len(self.cube_centers)} cubes...")
+        time.sleep(1.0)
+        
+        print("Starting rapid clicking...")
+        start_time = time.time()
+        
+        for i, (x, y) in enumerate(self.cube_centers):
+            # Optional: Uncomment to verify before clicking (but trusting math as requested)
+            # if not self.verify_cube_center(x, y):
+            #     print(f"Skipping invalid center at ({x}, {y})")
+            #     continue
+            
+            # Move cursor and click
+            win32api.SetCursorPos((x, y))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        
+        end_time = time.time()
+        elapsed_ms = (end_time - start_time) * 1000
+        print(f"Clicked all cubes in {elapsed_ms:.1f}ms ({elapsed_ms/len(self.cube_centers):.1f}ms per cube)")
+
     def analyze_grid(self) -> None:
         """
         Perform the complete analysis: count gaps and calculate cube grid.
@@ -174,11 +265,27 @@ class CubeGridCounter:
         # Calculate cube grid
         if gap_count > 0:
             grid_size, total_cubes = self.calculate_cube_grid(gap_count)
+            self.grid_size = grid_size  # Store for later use
             print(f"Grid dimensions: {grid_size}x{grid_size}")
             print(f"Total cubes in grid: {total_cubes}")
+            
+            # Calculate cube centers
+            self.calculate_cube_centers()
+            
         else:
             print("No gaps detected - unable to determine grid size")
             print("This might indicate a single row/column or detection issue")
+
+    def run_full_sequence(self) -> None:
+        """
+        Run the complete sequence: analyze grid and click all cubes.
+        """
+        self.analyze_grid()
+        
+        if self.cube_centers:
+            self.click_all_cubes()
+        else:
+            print("No valid cube centers found - skipping clicking phase")
 
 def main() -> None:
     counter = CubeGridCounter()
@@ -188,7 +295,9 @@ def main() -> None:
     print("2. The program takes a single screenshot of the area")
     print("3. Scans a vertical line to detect gaps using the screenshot")
     print("4. Calculates total cubes based on gap count: (gaps + 1)²")
-    print("5. Gap color: #2b87d1")
+    print("5. Calculates cube centers using relative positioning")
+    print("6. Clicks all cube centers rapidly")
+    print("Gap color: #2b87d1")
     print("===============================")
     input("Press Enter to begin coordinate registration...")
     
@@ -196,10 +305,10 @@ def main() -> None:
     
     print(f"\nRegistered area: {counter.coords[0]} to {counter.coords[1]}")
     
-    # Automatically start analysis after coordinate registration
-    counter.analyze_grid()
+    # Run complete sequence
+    counter.run_full_sequence()
     
-    print("\nAnalysis complete!")
+    print("\nSequence complete!")
 
 if __name__ == "__main__":
     main()
