@@ -179,78 +179,7 @@ class CubeGridCounter:
         total_cubes = grid_dimension * grid_dimension
         return grid_dimension, total_cubes
 
-    def calculate_cube_centers(self) -> list:
-        """
-        Calculate the center coordinates of all cubes using relative positioning.
-        Returns list of (x, y) tuples representing cube centers.
-        """
-        if self.grid_size == 0:
-            raise ValueError("Grid size not calculated. Run analyze_grid() first.")
-        
-        x1, y1 = self.coords[0]
-        x2, y2 = self.coords[1]
-        
-        # Ensure we have proper min/max values
-        min_x, max_x = min(x1, x2), max(x1, x2)
-        min_y, max_y = min(y1, y2), max(y1, y2)
-        
-        # Calculate total dimensions
-        total_width = max_x - min_x
-        total_height = max_y - min_y
-        
-        # Calculate cell size (cube + gap space)
-        cell_width = total_width / self.grid_size
-        cell_height = total_height / self.grid_size
-        
-        centers = []
-        print(f"Calculating centers for {self.grid_size}x{self.grid_size} grid")
-        print(f"Cell dimensions: {cell_width:.1f} x {cell_height:.1f}")
-        
-        for row in range(self.grid_size):
-            for col in range(self.grid_size):
-                # Calculate center of each cell
-                center_x = min_x + (col * cell_width) + (cell_width / 2)
-                center_y = min_y + (row * cell_height) + (cell_height / 2)
-                
-                center_coord = (int(center_x), int(center_y))
-                centers.append(center_coord)
-                
-                # Optional: Uncomment to verify each center (but trusting the math as requested)
-                # is_valid = self.verify_cube_center(center_coord[0], center_coord[1])
-                # print(f"Cube [{row}][{col}]: {center_coord} - Valid: {is_valid}")
-        
-        print(f"Calculated {len(centers)} cube centers")
-        self.cube_centers = centers
-        return centers
 
-    def click_all_cubes(self) -> None:
-        """
-        Click on all calculated cube centers rapidly.
-        Waits 1 second before starting, then clicks without delays.
-        """
-        if not self.cube_centers:
-            raise ValueError("No cube centers calculated. Run calculate_cube_centers() first.")
-        
-        print(f"\nWaiting 1 second before clicking {len(self.cube_centers)} cubes...")
-        time.sleep(1.0)
-        
-        print("Starting rapid clicking...")
-        start_time = time.time()
-        
-        for i, (x, y) in enumerate(self.cube_centers):
-            # Optional: Uncomment to verify before clicking (but trusting math as requested)
-            # if not self.verify_cube_center(x, y):
-            #     print(f"Skipping invalid center at ({x}, {y})")
-            #     continue
-            
-            # Move cursor and click
-            win32api.SetCursorPos((x, y))
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
-        
-        end_time = time.time()
-        elapsed_ms = (end_time - start_time) * 1000
-        print(f"Clicked all cubes in {elapsed_ms:.1f}ms ({elapsed_ms/len(self.cube_centers):.1f}ms per cube)")
 
     def analyze_grid(self) -> None:
         """
