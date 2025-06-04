@@ -238,7 +238,7 @@ class CubeGridCounter:
         start_time = time.time()
         
         for i, (x, y) in enumerate(self.cube_centers):
-            # Optional: Uncomment to verify before clicking (but trusting math as requested)
+            # Optional: Uncomment to verify before clicking (but im trusting my math)
             # if not self.verify_cube_center(x, y):
             #     print(f"Skipping invalid center at ({x}, {y})")
             #     continue
