@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import mss
 import numpy as np
 import win32api, win32con
@@ -312,3 +313,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+=======
+dsdfsdf
+>>>>>>> c8031803b5e7aa9dc95bdcddf1e5ce3983dfb8be
