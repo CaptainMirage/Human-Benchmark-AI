@@ -2,6 +2,7 @@ import mss
 import numpy as np
 import win32api, win32con
 import time
+from collections import deque
 
 class CubeGridCounter:
     def __init__(self) -> None:
@@ -12,6 +13,11 @@ class CubeGridCounter:
         self.screenshot = None  # Store the single screenshot
         self.grid_size = 0  # Store calculated grid size
         self.cube_centers = []  # Store calculated cube centers
+        self.previous_grid_size = 0  # Cache for grid size comparison
+        
+        # White detection variables
+        self.white_cubes = deque()  # Queue of cube indices that are white
+        self.last_white_detection = 0.0
 
     def collect_coordinates(self) -> list:
         """
@@ -96,6 +102,19 @@ class CubeGridCounter:
         This method is kept for compatibility but now uses the single screenshot.
         """
         return self.get_pixel_color_from_screenshot(x, y)
+
+    def is_pixel_white(self, x: int, y: int, threshold: int = 240) -> bool:
+        """
+        Check if the pixel at (x, y) is approximately white.
+        Uses real-time screenshot for white detection.
+        """
+        region = {'top': y, 'left': x, 'width': 1, 'height': 1}
+        screenshot = self.sct.grab(region)
+        img = np.array(screenshot)
+        b, g, r = img[0, 0, 0], img[0, 0, 1], img[0, 0, 2]
+        
+        # Check if the pixel is approximately white
+        return all(channel >= threshold for channel in (r, g, b))
 
     def verify_cube_center(self, x: int, y: int) -> bool:
         """
@@ -183,9 +202,15 @@ class CubeGridCounter:
         """
         Calculate the center coordinates of all cubes using relative positioning.
         Returns list of (x, y) tuples representing cube centers.
+        Only recalculates if grid size has changed.
         """
         if self.grid_size == 0:
             raise ValueError("Grid size not calculated. Run analyze_grid() first.")
+        
+        # Check if we need to recalculate (grid size changed)
+        if self.grid_size == self.previous_grid_size and self.cube_centers:
+            print(f"Grid size unchanged ({self.grid_size}x{self.grid_size}) - using cached centers")
+            return self.cube_centers
         
         x1, y1 = self.coords[0]
         x2, y2 = self.coords[1]
@@ -203,7 +228,7 @@ class CubeGridCounter:
         cell_height = total_height / self.grid_size
         
         centers = []
-        print(f"Calculating centers for {self.grid_size}x{self.grid_size} grid")
+        print(f"Calculating centers for {self.grid_size}x{self.grid_size} grid (grid size changed)")
         print(f"Cell dimensions: {cell_width:.1f} x {cell_height:.1f}")
         
         for row in range(self.grid_size):
@@ -221,7 +246,43 @@ class CubeGridCounter:
         
         print(f"Calculated {len(centers)} cube centers")
         self.cube_centers = centers
+        self.previous_grid_size = self.grid_size  # Update cache
         return centers
+
+    def click_white_cubes(self) -> None:
+        """
+        Click on all cube centers that were detected as white, then clear the white list.
+        """
+        if not self.white_cubes:
+            print("No white cubes to click")
+            return
+        
+        white_positions = []
+        for cube_index in self.white_cubes:
+            if cube_index < len(self.cube_centers):
+                white_positions.append(self.cube_centers[cube_index])
+        
+        if not white_positions:
+            print("No valid white cube positions found")
+            self.white_cubes.clear()
+            return
+        
+        print(f"Clicking {len(white_positions)} white cubes...")
+        start_time = time.time()
+        
+        for i, (x, y) in enumerate(white_positions):
+            # Move cursor and click
+            win32api.SetCursorPos((x, y))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        
+        end_time = time.time()
+        elapsed_ms = (end_time - start_time) * 1000
+        print(f"Clicked {len(white_positions)} white cubes in {elapsed_ms:.1f}ms ({elapsed_ms/len(white_positions):.1f}ms per cube)")
+        
+        # Clear the white cubes list after clicking
+        self.white_cubes.clear()
+        print("White cube list cleared")
 
     def click_all_cubes(self) -> None:
         """
@@ -238,7 +299,7 @@ class CubeGridCounter:
         start_time = time.time()
         
         for i, (x, y) in enumerate(self.cube_centers):
-            # Optional: Uncomment to verify before clicking (but im trusting my math)
+            # Optional: Uncomment to verify before clicking (but trusting math as requested)
             # if not self.verify_cube_center(x, y):
             #     print(f"Skipping invalid center at ({x}, {y})")
             #     continue
@@ -269,12 +330,77 @@ class CubeGridCounter:
             print(f"Grid dimensions: {grid_size}x{grid_size}")
             print(f"Total cubes in grid: {total_cubes}")
             
-            # Calculate cube centers
+            # Calculate cube centers (with caching)
             self.calculate_cube_centers()
             
         else:
             print("No gaps detected - unable to determine grid size")
             print("This might indicate a single row/column or detection issue")
+
+    def monitor_white_cubes(self, interval: float = 0.1, timeout: float = 3.0) -> None:
+        """
+        Continuously monitor cube centers for white pixels.
+        Clicks white cubes if no new white pixels are detected within the timeout.
+        Repeats the process indefinitely.
+        """
+        if not self.cube_centers:
+            raise ValueError("No cube centers calculated. Run analyze_grid() first.")
+        
+        print(f"Monitoring {len(self.cube_centers)} cube centers for white pixels.")
+        print(f"Will click white cubes if no new white pixels for {timeout} seconds.")
+        print("Press Ctrl+C to exit.")
+        
+        previous_white_states = [False] * len(self.cube_centers)
+        
+        try:
+            while True:
+                any_new_white = False
+                
+                # Check each cube center for white pixels
+                for i, (x, y) in enumerate(self.cube_centers):
+                    is_white_now = self.is_pixel_white(x, y)
+                    
+                    # If this cube just turned white (wasn't white before)
+                    if not previous_white_states[i] and is_white_now:
+                        print(f"Cube {i+1} at ({x}, {y}) is now white")
+                        self.white_cubes.append(i)
+                        self.last_white_detection = time.time()
+                        any_new_white = True
+                    
+                    previous_white_states[i] = is_white_now
+                
+                # If we have white cubes and timeout has passed, click them
+                if (not any_new_white and 
+                    self.white_cubes and 
+                    time.time() - self.last_white_detection > timeout):
+                    
+                    self.click_white_cubes()
+                    # Reset states for next round
+                    previous_white_states = [False] * len(self.cube_centers)
+                
+                time.sleep(interval)
+                
+        except KeyboardInterrupt:
+            print("\nMonitoring stopped.")
+
+    def run_white_detection_mode(self) -> None:
+        """
+        Run the complete white detection sequence with grid re-analysis.
+        """
+        try:
+            while True:
+                # Analyze grid (will use cache if size unchanged)
+                self.analyze_grid()
+                
+                if self.cube_centers:
+                    # Start monitoring for white cubes
+                    self.monitor_white_cubes(interval=0.1, timeout=3.0)
+                else:
+                    print("No valid cube centers found - retrying in 5 seconds...")
+                    time.sleep(5.0)
+                    
+        except KeyboardInterrupt:
+            print("\nWhite detection mode stopped.")
 
     def run_full_sequence(self) -> None:
         """
@@ -289,26 +415,36 @@ class CubeGridCounter:
 
 def main() -> None:
     counter = CubeGridCounter()
-    print("===== Cube Grid Counter =====")
-    print("This tool counts cube grids by detecting gaps between them.")
+    print("===== Enhanced Cube Grid Counter =====")
+    print("This tool detects cube grids and can operate in two modes:")
+    print("1. FULL SEQUENCE: Analyze grid and click all cubes")
+    print("2. WHITE DETECTION: Monitor cubes for white flashes and click only white ones")
+    print("")
+    print("Setup Process:")
     print("1. Register 2 opposite corners of the cube area (mouse over + 'C' key)")
-    print("2. The program takes a single screenshot of the area")
-    print("3. Scans a vertical line to detect gaps using the screenshot")
-    print("4. Calculates total cubes based on gap count: (gaps + 1)²")
-    print("5. Calculates cube centers using relative positioning")
-    print("6. Clicks all cube centers rapidly")
-    print("Gap color: #2b87d1")
-    print("===============================")
+    print("2. Choose your mode")
+    print("=====================================")
     input("Press Enter to begin coordinate registration...")
     
     counter.collect_coordinates()
-    
     print(f"\nRegistered area: {counter.coords[0]} to {counter.coords[1]}")
     
-    # Run complete sequence
-    counter.run_full_sequence()
+    print("\nChoose mode:")
+    print("1. Full sequence (analyze + click all cubes)")
+    print("2. White detection mode (monitor + click white cubes)")
     
-    print("\nSequence complete!")
+    while True:
+        choice = input("Enter choice (1 or 2): ").strip()
+        if choice == "1":
+            counter.run_full_sequence()
+            break
+        elif choice == "2":
+            counter.run_white_detection_mode()
+            break
+        else:
+            print("Please enter 1 or 2")
+    
+    print("Program complete!")
 
 if __name__ == "__main__":
     main()
