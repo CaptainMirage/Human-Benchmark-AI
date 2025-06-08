@@ -202,15 +202,9 @@ class CubeGridCounter:
         """
         Calculate the center coordinates of all cubes using relative positioning.
         Returns list of (x, y) tuples representing cube centers.
-        Only recalculates if grid size has changed.
         """
         if self.grid_size == 0:
             raise ValueError("Grid size not calculated. Run analyze_grid() first.")
-        
-        # Check if we need to recalculate (grid size changed)
-        if self.grid_size == self.previous_grid_size and self.cube_centers:
-            print(f"Grid size unchanged ({self.grid_size}x{self.grid_size}) - using cached centers")
-            return self.cube_centers
         
         x1, y1 = self.coords[0]
         x2, y2 = self.coords[1]
@@ -228,7 +222,7 @@ class CubeGridCounter:
         cell_height = total_height / self.grid_size
         
         centers = []
-        print(f"Calculating centers for {self.grid_size}x{self.grid_size} grid (grid size changed)")
+        print(f"Calculating centers for {self.grid_size}x{self.grid_size} grid")
         print(f"Cell dimensions: {cell_width:.1f} x {cell_height:.1f}")
         
         for row in range(self.grid_size):
@@ -239,14 +233,9 @@ class CubeGridCounter:
                 
                 center_coord = (int(center_x), int(center_y))
                 centers.append(center_coord)
-                
-                # Optional: Uncomment to verify each center (but trusting the math as requested)
-                # is_valid = self.verify_cube_center(center_coord[0], center_coord[1])
-                # print(f"Cube [{row}][{col}]: {center_coord} - Valid: {is_valid}")
         
         print(f"Calculated {len(centers)} cube centers")
         self.cube_centers = centers
-        self.previous_grid_size = self.grid_size  # Update cache
         return centers
 
     def click_white_cubes(self) -> None:
@@ -299,11 +288,6 @@ class CubeGridCounter:
         start_time = time.time()
         
         for i, (x, y) in enumerate(self.cube_centers):
-            # Optional: Uncomment to verify before clicking (but trusting math as requested)
-            # if not self.verify_cube_center(x, y):
-            #     print(f"Skipping invalid center at ({x}, {y})")
-            #     continue
-            
             # Move cursor and click
             win32api.SetCursorPos((x, y))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
@@ -313,9 +297,10 @@ class CubeGridCounter:
         elapsed_ms = (end_time - start_time) * 1000
         print(f"Clicked all cubes in {elapsed_ms:.1f}ms ({elapsed_ms/len(self.cube_centers):.1f}ms per cube)")
 
-    def analyze_grid(self) -> None:
+    def analyze_grid(self) -> bool:
         """
         Perform the complete analysis: count gaps and calculate cube grid.
+        Returns True if analysis was successful, False otherwise.
         """
         print("\n=== Starting Grid Analysis ===")
         
@@ -325,79 +310,97 @@ class CubeGridCounter:
         
         # Calculate cube grid
         if gap_count > 0:
-            grid_size, total_cubes = self.calculate_cube_grid(gap_count)
-            self.grid_size = grid_size  # Store for later use
-            print(f"Grid dimensions: {grid_size}x{grid_size}")
-            print(f"Total cubes in grid: {total_cubes}")
+            new_grid_size, total_cubes = self.calculate_cube_grid(gap_count)
             
-            # Calculate cube centers (with caching)
-            self.calculate_cube_centers()
+            # Check if grid size actually changed
+            if new_grid_size != self.grid_size:
+                print(f"Grid size changed: {self.grid_size}x{self.grid_size} -> {new_grid_size}x{new_grid_size}")
+                self.grid_size = new_grid_size
+                # Force recalculation of cube centers
+                self.calculate_cube_centers()
+                return True
+            else:
+                print(f"Grid size unchanged: {self.grid_size}x{self.grid_size}")
+                return False
             
         else:
             print("No gaps detected - unable to determine grid size")
             print("This might indicate a single row/column or detection issue")
+            return False
 
-    def monitor_white_cubes(self, interval: float = 0.1, timeout: float = 3.0) -> None:
+    def monitor_white_cubes_batch(self, batch_interval: float = 0.05, timeout: float = 3.0) -> int:
         """
-        Continuously monitor cube centers for white pixels.
-        Clicks white cubes if no new white pixels are detected within the timeout.
-        Repeats the process indefinitely.
+        Monitor all cube centers for white pixels in batches for better performance.
+        Returns the number of white cubes detected.
         """
         if not self.cube_centers:
-            raise ValueError("No cube centers calculated. Run analyze_grid() first.")
+            return 0
         
-        print(f"Monitoring {len(self.cube_centers)} cube centers for white pixels.")
-        print(f"Will click white cubes if no new white pixels for {timeout} seconds.")
-        print("Press Ctrl+C to exit.")
+        white_count = 0
+        last_detection_time = time.time()
         
-        previous_white_states = [False] * len(self.cube_centers)
+        print(f"Starting batch monitoring of {len(self.cube_centers)} cubes...")
         
-        try:
-            while True:
-                any_new_white = False
-                
-                # Check each cube center for white pixels
-                for i, (x, y) in enumerate(self.cube_centers):
-                    is_white_now = self.is_pixel_white(x, y)
-                    
-                    # If this cube just turned white (wasn't white before)
-                    if not previous_white_states[i] and is_white_now:
-                        print(f"Cube {i+1} at ({x}, {y}) is now white")
-                        self.white_cubes.append(i)
-                        self.last_white_detection = time.time()
-                        any_new_white = True
-                    
-                    previous_white_states[i] = is_white_now
-                
-                # If we have white cubes and timeout has passed, click them
-                if (not any_new_white and 
-                    self.white_cubes and 
-                    time.time() - self.last_white_detection > timeout):
-                    
-                    self.click_white_cubes()
-                    # Reset states for next round
-                    previous_white_states = [False] * len(self.cube_centers)
-                
-                time.sleep(interval)
-                
-        except KeyboardInterrupt:
-            print("\nMonitoring stopped.")
+        while time.time() - last_detection_time < timeout:
+            batch_start = time.time()
+            new_whites_this_batch = 0
+            
+            # Check all cubes in this batch
+            for i, (x, y) in enumerate(self.cube_centers):
+                try:
+                    if self.is_pixel_white(x, y):
+                        if i not in self.white_cubes:  # Only add if not already in queue
+                            self.white_cubes.append(i)
+                            print(f"Cube {i+1} at ({x}, {y}) is now white")
+                            new_whites_this_batch += 1
+                            white_count += 1
+                except Exception as e:
+                    # Skip problematic coordinates
+                    continue
+            
+            # If we found new white cubes, reset the timeout
+            if new_whites_this_batch > 0:
+                last_detection_time = time.time()
+            
+            # Sleep for the remaining batch interval
+            elapsed = time.time() - batch_start
+            sleep_time = max(0, batch_interval - elapsed)
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        
+        return white_count
 
     def run_white_detection_mode(self) -> None:
         """
-        Run the complete white detection sequence with grid re-analysis.
+        Run the complete white detection sequence with periodic grid re-analysis.
         """
+        print("Starting white detection mode with periodic grid re-analysis...")
+        
         try:
             while True:
-                # Analyze grid (will use cache if size unchanged)
-                self.analyze_grid()
+                # Analyze grid
+                grid_changed = self.analyze_grid()
                 
-                if self.cube_centers:
-                    # Start monitoring for white cubes
-                    self.monitor_white_cubes(interval=0.1, timeout=3.0)
-                else:
+                if not self.cube_centers:
                     print("No valid cube centers found - retrying in 5 seconds...")
                     time.sleep(5.0)
+                    continue
+                
+                if grid_changed:
+                    print("Grid layout changed - using new cube positions")
+                
+                # Monitor for white cubes with faster detection
+                white_count = self.monitor_white_cubes_batch(
+                    batch_interval=0.05,  # Check all cubes every 50ms
+                    timeout=2.0  # Wait 2 seconds after last white detection
+                )
+                
+                # Click any detected white cubes
+                if self.white_cubes:
+                    self.click_white_cubes()
+                
+                # Short pause before next analysis cycle
+                time.sleep(0.5)
                     
         except KeyboardInterrupt:
             print("\nWhite detection mode stopped.")
