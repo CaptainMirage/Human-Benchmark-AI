@@ -18,6 +18,7 @@ class CubeGridCounter:
         # White detection variables
         self.white_cubes = deque()  # Queue of cube indices that are white
         self.last_white_detection = 0.0
+        self.last_clicked_pattern = set()  # Store the last pattern of white cubes that were clicked
 
     def collect_coordinates(self) -> list:
         """
@@ -241,9 +242,19 @@ class CubeGridCounter:
     def click_white_cubes(self) -> None:
         """
         Click on all cube centers that were detected as white, then clear the white list.
+        Only clicks if the pattern is different from the last clicked pattern.
         """
         if not self.white_cubes:
             print("No white cubes to click")
+            return
+        
+        # Convert current white cubes to a set for comparison
+        current_pattern = set(self.white_cubes)
+        
+        # Check if this pattern is the same as the last clicked pattern
+        if current_pattern == self.last_clicked_pattern:
+            print(f"Same pattern detected ({len(current_pattern)} cubes) - skipping click to avoid duplicates")
+            self.white_cubes.clear()
             return
         
         white_positions = []
@@ -256,7 +267,7 @@ class CubeGridCounter:
             self.white_cubes.clear()
             return
         
-        print(f"Clicking {len(white_positions)} white cubes...")
+        print(f"Clicking {len(white_positions)} white cubes (new pattern)...")
         start_time = time.time()
         
         for i, (x, y) in enumerate(white_positions):
@@ -268,6 +279,9 @@ class CubeGridCounter:
         end_time = time.time()
         elapsed_ms = (end_time - start_time) * 1000
         print(f"Clicked {len(white_positions)} white cubes in {elapsed_ms:.1f}ms ({elapsed_ms/len(white_positions):.1f}ms per cube)")
+        
+        # Store this pattern as the last clicked pattern
+        self.last_clicked_pattern = current_pattern.copy()
         
         # Clear the white cubes list after clicking
         self.white_cubes.clear()
@@ -316,6 +330,8 @@ class CubeGridCounter:
             if new_grid_size != self.grid_size:
                 print(f"Grid size changed: {self.grid_size}x{self.grid_size} -> {new_grid_size}x{new_grid_size}")
                 self.grid_size = new_grid_size
+                # Reset the last clicked pattern when grid changes
+                self.last_clicked_pattern = set()
                 # Force recalculation of cube centers
                 self.calculate_cube_centers()
                 return True
@@ -426,33 +442,18 @@ class CubeGridCounter:
 def main() -> None:
     counter = CubeGridCounter()
     print("===== Enhanced Cube Grid Counter =====")
-    print("This tool detects cube grids and can operate in two modes:")
-    print("1. FULL SEQUENCE: Analyze grid and click all cubes")
-    print("2. WHITE DETECTION: Monitor cubes for white flashes and click only white ones")
+    print("This tool detects cube grids and monitors for white flashes.")
     print("")
     print("Setup Process:")
     print("1. Register 2 opposite corners of the cube area (mouse over + 'C' key)")
-    print("2. Choose your mode")
+    print("2. Automatic white detection mode will start")
     print("=====================================")
-    input("Press Enter to begin coordinate registration...")
     
     counter.collect_coordinates()
     print(f"\nRegistered area: {counter.coords[0]} to {counter.coords[1]}")
+    print("\nStarting white detection mode automatically...")
     
-    print("\nChoose mode:")
-    print("1. Full sequence (analyze + click all cubes)")
-    print("2. White detection mode (monitor + click white cubes)")
-    
-    while True:
-        choice = input("Enter choice (1 or 2): ").strip()
-        if choice == "1":
-            counter.run_full_sequence()
-            break
-        elif choice == "2":
-            counter.run_white_detection_mode()
-            break
-        else:
-            print("Please enter 1 or 2")
+    counter.run_white_detection_mode()
     
     print("Program complete!")
 
