@@ -372,23 +372,19 @@ class CubeGridCounter:
 
     def run_white_detection_mode(self) -> None:
         """
-        Run the complete white detection sequence with periodic grid re-analysis.
+        Run the complete white detection sequence with grid re-analysis after each click batch.
         """
-        print("Starting white detection mode with periodic grid re-analysis...")
+        print("Starting white detection mode with grid re-analysis after each click batch...")
         
         try:
+            # Initial grid analysis
+            self.analyze_grid()
+            
+            if not self.cube_centers:
+                print("No valid cube centers found initially - exiting...")
+                return
+            
             while True:
-                # Analyze grid
-                grid_changed = self.analyze_grid()
-                
-                if not self.cube_centers:
-                    print("No valid cube centers found - retrying in 5 seconds...")
-                    time.sleep(5.0)
-                    continue
-                
-                if grid_changed:
-                    print("Grid layout changed - using new cube positions")
-                
                 # Monitor for white cubes with faster detection
                 white_count = self.monitor_white_cubes_batch(
                     batch_interval=0.05,  # Check all cubes every 50ms
@@ -398,9 +394,20 @@ class CubeGridCounter:
                 # Click any detected white cubes
                 if self.white_cubes:
                     self.click_white_cubes()
+                    
+                    # Re-analyze grid after clicking white cubes
+                    print("Re-analyzing grid after clicking white cubes...")
+                    grid_changed = self.analyze_grid()
+                    
+                    if grid_changed:
+                        print("Grid layout changed - using new cube positions")
+                    elif not self.cube_centers:
+                        print("No valid cube centers found - retrying...")
+                        time.sleep(1.0)
+                        continue
                 
-                # Short pause before next analysis cycle
-                time.sleep(0.5)
+                # Short pause before next detection cycle
+                time.sleep(0.1)
                     
         except KeyboardInterrupt:
             print("\nWhite detection mode stopped.")
