@@ -13,9 +13,11 @@ class CubeGridCounter:
         self.screenshot = None  # Store the single screenshot
         self.grid_size = 0  # Store calculated grid size
         self.cube_centers = []  # Store calculated cube centers
+        self.previous_grid_size = 0  # Cache for grid size comparison
         
         # White detection variables
         self.white_cubes = deque()  # Queue of cube indices that are white
+        self.last_white_detection = 0.0
         self.last_clicked_pattern = set()  # Store the last pattern of white cubes that were clicked
 
     def collect_coordinates(self) -> list:
@@ -95,6 +97,13 @@ class CubeGridCounter:
         b, g, r = self.screenshot[local_y, local_x, 0], self.screenshot[local_y, local_x, 1], self.screenshot[local_y, local_x, 2]
         return (r, g, b)
 
+    def get_pixel_color(self, x: int, y: int) -> tuple:
+        """
+        Get the RGB color of the pixel at (x, y).
+        This method is kept for compatibility but now uses the single screenshot.
+        """
+        return self.get_pixel_color_from_screenshot(x, y)
+
     def is_pixel_white(self, x: int, y: int, threshold: int = 240) -> bool:
         """
         Check if the pixel at (x, y) is approximately white.
@@ -107,6 +116,22 @@ class CubeGridCounter:
         
         # Check if the pixel is approximately white
         return all(channel >= threshold for channel in (r, g, b))
+
+    def verify_cube_center(self, x: int, y: int) -> bool:
+        """
+        Verify if the calculated center pixel is actually on a cube (not gap).
+        Returns True if pixel is NOT the gap color (i.e., is on a cube).
+        
+        Usage: Can be used to validate calculated centers before clicking:
+        - In calculate_cube_centers(): filter out invalid centers
+        - In click_all_cubes(): skip invalid centers
+        - As a debug tool to check calculation accuracy
+        """
+        try:
+            r, g, b = self.get_pixel_color_from_screenshot(x, y)
+            return not self.is_target_color(r, g, b)  # True if NOT gap color
+        except (ValueError, IndexError):
+            return False  # Consider out-of-bounds as invalid
 
     def calculate_scan_line(self) -> tuple:
         """
@@ -164,6 +189,15 @@ class CubeGridCounter:
                 print(f"Gap {gap_count} ends at y={y-1}")
         
         return gap_count
+
+    def calculate_cube_grid(self, gaps: int) -> tuple:
+        """
+        Calculate the cube grid dimensions and total count based on gaps.
+        Returns (grid_dimension, total_cubes)
+        """
+        grid_dimension = gaps + 1
+        total_cubes = grid_dimension * grid_dimension
+        return grid_dimension, total_cubes
 
     def calculate_cube_centers(self) -> list:
         """
@@ -253,6 +287,30 @@ class CubeGridCounter:
         self.white_cubes.clear()
         print("White cube list cleared")
 
+    def click_all_cubes(self) -> None:
+        """
+        Click on all calculated cube centers rapidly.
+        Waits 1 second before starting, then clicks without delays.
+        """
+        if not self.cube_centers:
+            raise ValueError("No cube centers calculated. Run calculate_cube_centers() first.")
+        
+        print(f"\nWaiting 1 second before clicking {len(self.cube_centers)} cubes...")
+        time.sleep(1.0)
+        
+        print("Starting rapid clicking...")
+        start_time = time.time()
+        
+        for i, (x, y) in enumerate(self.cube_centers):
+            # Move cursor and click
+            win32api.SetCursorPos((x, y))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        
+        end_time = time.time()
+        elapsed_ms = (end_time - start_time) * 1000
+        print(f"Clicked all cubes in {elapsed_ms:.1f}ms ({elapsed_ms/len(self.cube_centers):.1f}ms per cube)")
+
     def analyze_grid(self) -> bool:
         """
         Perform the complete analysis: count gaps and calculate cube grid.
@@ -266,15 +324,14 @@ class CubeGridCounter:
         
         # Calculate cube grid
         if gap_count > 0:
-            new_grid_size = gap_count + 1
+            new_grid_size, total_cubes = self.calculate_cube_grid(gap_count)
             
             # Check if grid size actually changed
             if new_grid_size != self.grid_size:
                 print(f"Grid size changed: {self.grid_size}x{self.grid_size} -> {new_grid_size}x{new_grid_size}")
                 self.grid_size = new_grid_size
-                # Reset everything when grid changes
+                # Reset the last clicked pattern when grid changes
                 self.last_clicked_pattern = set()
-                self.white_cubes.clear()  # Clear old white cube indices
                 # Force recalculation of cube centers
                 self.calculate_cube_centers()
                 return True
@@ -284,6 +341,7 @@ class CubeGridCounter:
             
         else:
             print("No gaps detected - unable to determine grid size")
+            print("This might indicate a single row/column or detection issue")
             return False
 
     def monitor_white_cubes_batch(self, batch_interval: float = 0.05, timeout: float = 3.0) -> int:
@@ -343,32 +401,43 @@ class CubeGridCounter:
                 return
             
             while True:
-                # FIRST: Re-analyze grid to catch any changes
-                print("Checking for grid changes...")
-                grid_changed = self.analyze_grid()
-                
-                if grid_changed:
-                    print("Grid layout changed - using new cube positions")
-                elif not self.cube_centers:
-                    print("No valid cube centers found - retrying...")
-                    time.sleep(1.0)
-                    continue
-                
-                # SECOND: Monitor for white cubes with current grid
+                # Monitor for white cubes with faster detection
                 white_count = self.monitor_white_cubes_batch(
                     batch_interval=0.05,  # Check all cubes every 50ms
                     timeout=2.0  # Wait 2 seconds after last white detection
                 )
                 
-                # THIRD: Click any detected white cubes
+                # Click any detected white cubes
                 if self.white_cubes:
                     self.click_white_cubes()
+                    
+                    # Re-analyze grid after clicking white cubes
+                    print("Re-analyzing grid after clicking white cubes...")
+                    grid_changed = self.analyze_grid()
+                    
+                    if grid_changed:
+                        print("Grid layout changed - using new cube positions")
+                    elif not self.cube_centers:
+                        print("No valid cube centers found - retrying...")
+                        time.sleep(1.0)
+                        continue
                 
-                # Short pause before next cycle
+                # Short pause before next detection cycle
                 time.sleep(0.1)
                     
         except KeyboardInterrupt:
             print("\nWhite detection mode stopped.")
+
+    def run_full_sequence(self) -> None:
+        """
+        Run the complete sequence: analyze grid and click all cubes.
+        """
+        self.analyze_grid()
+        
+        if self.cube_centers:
+            self.click_all_cubes()
+        else:
+            print("No valid cube centers found - skipping clicking phase")
 
 def main() -> None:
     counter = CubeGridCounter()
