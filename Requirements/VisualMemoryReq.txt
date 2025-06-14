@@ -1,3 +1,0 @@
-mss
-numpy
-pywin32
