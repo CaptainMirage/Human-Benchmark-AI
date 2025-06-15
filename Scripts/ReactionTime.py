@@ -88,3 +88,4 @@ if __name__ == '__main__':
         react_to_color_changes(pos[0], pos[1])
     except KeyboardInterrupt:
         print("\nMonitoring stopped by user")
+        
